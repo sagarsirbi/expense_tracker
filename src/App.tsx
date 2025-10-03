@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { databaseAPI, migrateFromLocalStorage, isElectronApp, type Expense as DatabaseExpense, type Budget } from './services/database';
 import './App.css';
 
 interface Expense {
@@ -73,10 +74,54 @@ function App() {
     setCurrency(prev => prev === 'INR' ? 'EUR' : 'INR');
   };
 
-  // Fetch exchange rate on component mount
+  // Fetch exchange rate on component mount and initialize database
   useEffect(() => {
     fetchExchangeRate();
+    initializeDatabase();
   }, []);
+
+  // Initialize database and load data
+  const initializeDatabase = async () => {
+    try {
+      // Migrate from localStorage if in Electron and localStorage has data
+      if (isElectronApp()) {
+        await migrateFromLocalStorage();
+      }
+      
+      // Load expenses and budgets from database
+      await loadExpenses();
+      await loadBudgets();
+    } catch (error) {
+      console.error('Error initializing database:', error);
+    }
+  };
+
+  // Load expenses from database
+  const loadExpenses = async () => {
+    try {
+      const dbExpenses = await databaseAPI.getExpenses();
+      setExpenses(dbExpenses.map(exp => ({
+        ...exp,
+        currency: (exp.currency as 'INR' | 'EUR') || 'INR'
+      })));
+    } catch (error) {
+      console.error('Error loading expenses:', error);
+    }
+  };
+
+  // Load budgets from database
+  const loadBudgets = async () => {
+    try {
+      const dbBudgets = await databaseAPI.getBudgets();
+      const budgetObj: {[key: string]: number} = {};
+      dbBudgets.forEach(budget => {
+        budgetObj[budget.category] = budget.amount;
+      });
+      setBudgets(budgetObj);
+    } catch (error) {
+      console.error('Error loading budgets:', error);
+    }
+  };
 
   // Migrate existing expenses to include currency field
   useEffect(() => {
@@ -146,11 +191,21 @@ function App() {
     return colors[hash % colors.length];
   };
 
-  const addExpense = () => {
+  const addExpense = async () => {
     if (newExpense.date && newExpense.amount && newExpense.description) {
       const expenseToAdd = { ...newExpense, id: Date.now().toString(), currency };
-      setExpenses([...expenses, expenseToAdd]);
-      setNewExpense({ date: '', category: newExpense.category, description: '', amount: '' });
+      
+      try {
+        const result = await databaseAPI.addExpense(expenseToAdd);
+        if (result.success) {
+          setExpenses([...expenses, expenseToAdd]);
+          setNewExpense({ date: '', category: newExpense.category, description: '', amount: '' });
+        } else {
+          console.error('Failed to add expense:', result.error);
+        }
+      } catch (error) {
+        console.error('Error adding expense:', error);
+      }
     }
   };
 
@@ -162,15 +217,40 @@ function App() {
     }
   };
 
-  const deleteExpense = (id: string) => {
-    setExpenses(expenses.filter(exp => exp.id !== id));
+  const deleteExpense = async (id: string) => {
+    try {
+      const result = await databaseAPI.deleteExpense(id);
+      if (result.success) {
+        setExpenses(expenses.filter(exp => exp.id !== id));
+      } else {
+        console.error('Failed to delete expense:', result.error);
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+    }
   };
 
-  const setBudgetForCategory = (category: string, amount: number) => {
-    setBudgets(prev => ({
-      ...prev,
-      [category]: amount
-    }));
+  const setBudgetForCategory = async (category: string, amount: number) => {
+    try {
+      const budget = {
+        id: `budget_${category}_${Date.now()}`,
+        category,
+        amount,
+        currency: currency
+      };
+      
+      const result = await databaseAPI.setBudget(budget);
+      if (result.success) {
+        setBudgets(prev => ({
+          ...prev,
+          [category]: amount
+        }));
+      } else {
+        console.error('Failed to set budget:', result.error);
+      }
+    } catch (error) {
+      console.error('Error setting budget:', error);
+    }
   };
 
   const getCurrentMonthExpenses = (category: string) => {
@@ -480,94 +560,136 @@ function App() {
   return (
     <div className="expense-tracker">
       <div className="container">
-        {/* Header */}
+        {/* Enhanced Header */}
         <div className="header">
           <div className="header-left">
-            <Calendar className="text-purple-500" size={24} />
-            <div>
-              <h1 className="header-title">Expense Tracker</h1>
-              <p className="header-subtitle">Track your daily expenses with custom categories</p>
+            <div className="header-brand">
+              <div className="logo-container">
+                <div className="money-icon">💰</div>
+                <div className="coins-decoration">
+                  <span className="coin coin-1">🪙</span>
+                  <span className="coin coin-2">🪙</span>
+                  <span className="coin coin-3">🪙</span>
+                </div>
+              </div>
+              <div className="brand-text">
+                <h1 className="header-title">
+                  <span className="title-main">Expense</span>
+                  <span className="title-accent">Tracker</span>
+                  <span className="money-symbol">💳</span>
+                </h1>
+                <p className="header-subtitle">
+                  <span className="subtitle-icon">📊</span>
+                  Smart money management with multi-currency support
+                  <span className="growth-icon">📈</span>
+                </p>
+              </div>
             </div>
           </div>
           
-          {/* Month Navigation */}
-          <div className="month-navigator">
-            <button 
-              onClick={() => navigateMonth('prev')}
-              className="month-nav-btn"
-              title="Previous month"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <div className="current-month">
-              <h3 className="month-display">
-                {getMonthName(selectedMonth)} {selectedYear}
-              </h3>
-              <button 
-                onClick={goToCurrentMonth}
-                className="current-month-btn"
-                title="Go to current month"
-              >
-                Today
-              </button>
-            </div>
-            <button 
-              onClick={() => navigateMonth('next')}
-              className="month-nav-btn"
-              title="Next month"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-          
-          <div className="header-buttons">
-            {/* Currency Toggle */}
-            <div className="currency-toggle">
-              <button 
-                onClick={toggleCurrency}
-                className="currency-toggle-btn"
-                title={`Switch to ${currency === 'INR' ? 'EUR' : 'INR'}`}
-              >
-                <div className="currency-option">
-                  <span className="flag">{currency === 'INR' ? '🇮🇳' : '🇪🇺'}</span>
-                  <span className="currency-code">{currency}</span>
+          {/* Organized Header Controls */}
+          <div className="header-controls">
+            {/* Month Navigation Section */}
+            <div className="control-section month-section">
+              <div className="section-label">
+                <Calendar size={14} />
+                Period
+              </div>
+              <div className="month-navigator">
+                <button 
+                  onClick={() => navigateMonth('prev')}
+                  className="month-nav-btn"
+                  title="Previous month"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div className="current-month">
+                  <h3 className="month-display">
+                    {getMonthName(selectedMonth)} {selectedYear}
+                  </h3>
+                  <button 
+                    onClick={goToCurrentMonth}
+                    className="current-month-btn"
+                    title="Go to current month"
+                  >
+                    Today
+                  </button>
                 </div>
-                <div className="toggle-arrow">⇄</div>
-                <div className="currency-option inactive">
-                  <span className="flag">{currency === 'INR' ? '🇪🇺' : '🇮🇳'}</span>
-                  <span className="currency-code">{currency === 'INR' ? 'EUR' : 'INR'}</span>
-                </div>
-              </button>
+                <button 
+                  onClick={() => navigateMonth('next')}
+                  className="month-nav-btn"
+                  title="Next month"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
-            
-            <input
-              type="file"
-              accept=".csv"
-              onChange={importFromCSV}
-              style={{display: 'none'}}
-              id="csv-import"
-            />
-            <label
-              htmlFor="csv-import"
-              className="import-btn"
-            >
-              <Download size={16} style={{transform: 'rotate(180deg)'}} />
-              Import CSV
-            </label>
-            <button
-              onClick={exportToCSV}
-              className="export-btn"
-            >
-              <Download size={16} />
-              Export CSV
-            </button>
-            <button
-              onClick={() => setShowBudgetModal(true)}
-              className="budget-btn"
-            >
-              <DollarSign size={16} />
-              Set Budgets
-            </button>
+
+            {/* Currency Section */}
+            <div className="control-section currency-section">
+              <div className="section-label">
+                <span className="currency-icon">💱</span>
+                Currency
+              </div>
+              <div className="currency-toggle">
+                <button 
+                  onClick={toggleCurrency}
+                  className="currency-toggle-btn"
+                  title={`Switch to ${currency === 'INR' ? 'EUR' : 'INR'}`}
+                >
+                  <div className="currency-option">
+                    <span className="flag">{currency === 'INR' ? '🇮🇳' : '🇪🇺'}</span>
+                    <span className="currency-code">{currency}</span>
+                  </div>
+                  <div className="toggle-arrow">⇄</div>
+                  <div className="currency-option inactive">
+                    <span className="flag">{currency === 'INR' ? '🇪🇺' : '🇮🇳'}</span>
+                    <span className="currency-code">{currency === 'INR' ? 'EUR' : 'INR'}</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Actions Section */}
+            <div className="control-section actions-section">
+              <div className="section-label">
+                <span className="actions-icon">⚡</span>
+                Actions
+              </div>
+              <div className="action-buttons">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={importFromCSV}
+                  style={{display: 'none'}}
+                  id="csv-import"
+                />
+                <label
+                  htmlFor="csv-import"
+                  className="action-btn import-btn"
+                  title="Import expenses from CSV"
+                >
+                  <Download size={14} style={{transform: 'rotate(180deg)'}} />
+                  <span className="btn-text">Import</span>
+                </label>
+                <button
+                  onClick={exportToCSV}
+                  className="action-btn export-btn"
+                  title="Export expenses to CSV"
+                >
+                  <Download size={14} />
+                  <span className="btn-text">Export</span>
+                </button>
+                <button
+                  onClick={() => setShowBudgetModal(true)}
+                  className="action-btn budget-btn"
+                  title="Set category budgets"
+                >
+                  <DollarSign size={14} />
+                  <span className="btn-text">Budget</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
