@@ -1,7 +1,11 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const isDev = !app.isPackaged;
+const fs = require('fs');
 const Database = require('better-sqlite3');
+
+// Check if dist folder exists to determine mode
+const distPath = path.join(__dirname, '..', 'dist', 'index.html');
+const isDev = process.env.NODE_ENV === 'development' || !fs.existsSync(distPath);
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -17,29 +21,58 @@ function initDatabase() {
   
   // Create tables if they don't exist
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT,
+      google_id TEXT UNIQUE,
+      display_name TEXT,
+      profile_picture TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS expenses (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       amount REAL NOT NULL,
       description TEXT NOT NULL,
       category TEXT NOT NULL,
       date TEXT NOT NULL,
       currency TEXT DEFAULT 'INR',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS budgets (
       id TEXT PRIMARY KEY,
-      category TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL,
+      category TEXT NOT NULL,
       amount REAL NOT NULL,
       currency TEXT DEFAULT 'INR',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+      UNIQUE(user_id, category)
     );
 
     CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      key TEXT NOT NULL,
       value TEXT NOT NULL,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, key),
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_data TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     );
   `);
 
@@ -66,11 +99,13 @@ function createWindow() {
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5175');
+    mainWindow.loadURL('http://localhost:5174');
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    // Open DevTools to debug white screen
+    mainWindow.webContents.openDevTools();
   }
 
   // Show window when ready to prevent visual flash
@@ -112,10 +147,10 @@ app.on('before-quit', () => {
 });
 
 // IPC handlers for database operations
-ipcMain.handle('db-get-expenses', () => {
+ipcMain.handle('db-get-expenses', (event, userId) => {
   try {
-    const stmt = db.prepare('SELECT * FROM expenses ORDER BY date DESC, created_at DESC');
-    return stmt.all();
+    const stmt = db.prepare('SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC, created_at DESC');
+    return stmt.all(userId);
   } catch (error) {
     console.error('Error getting expenses:', error);
     return [];
@@ -125,10 +160,10 @@ ipcMain.handle('db-get-expenses', () => {
 ipcMain.handle('db-add-expense', (event, expense) => {
   try {
     const stmt = db.prepare(`
-      INSERT INTO expenses (id, amount, description, category, date, currency)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO expenses (id, user_id, amount, description, category, date, currency)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(expense.id, expense.amount, expense.description, expense.category, expense.date, expense.currency || 'INR');
+    stmt.run(expense.id, expense.user_id, expense.amount, expense.description, expense.category, expense.date, expense.currency || 'INR');
     return { success: true };
   } catch (error) {
     console.error('Error adding expense:', error);
@@ -141,9 +176,9 @@ ipcMain.handle('db-update-expense', (event, expense) => {
     const stmt = db.prepare(`
       UPDATE expenses 
       SET amount = ?, description = ?, category = ?, date = ?, currency = ?
-      WHERE id = ?
+      WHERE id = ? AND user_id = ?
     `);
-    stmt.run(expense.amount, expense.description, expense.category, expense.date, expense.currency || 'INR', expense.id);
+    stmt.run(expense.amount, expense.description, expense.category, expense.date, expense.currency || 'INR', expense.id, expense.user_id);
     return { success: true };
   } catch (error) {
     console.error('Error updating expense:', error);
@@ -151,10 +186,10 @@ ipcMain.handle('db-update-expense', (event, expense) => {
   }
 });
 
-ipcMain.handle('db-delete-expense', (event, id) => {
+ipcMain.handle('db-delete-expense', (event, id, userId) => {
   try {
-    const stmt = db.prepare('DELETE FROM expenses WHERE id = ?');
-    stmt.run(id);
+    const stmt = db.prepare('DELETE FROM expenses WHERE id = ? AND user_id = ?');
+    stmt.run(id, userId);
     return { success: true };
   } catch (error) {
     console.error('Error deleting expense:', error);
@@ -162,10 +197,10 @@ ipcMain.handle('db-delete-expense', (event, id) => {
   }
 });
 
-ipcMain.handle('db-get-budgets', () => {
+ipcMain.handle('db-get-budgets', (event, userId) => {
   try {
-    const stmt = db.prepare('SELECT * FROM budgets');
-    return stmt.all();
+    const stmt = db.prepare('SELECT * FROM budgets WHERE user_id = ?');
+    return stmt.all(userId);
   } catch (error) {
     console.error('Error getting budgets:', error);
     return [];
@@ -175,14 +210,14 @@ ipcMain.handle('db-get-budgets', () => {
 ipcMain.handle('db-set-budget', (event, budget) => {
   try {
     const stmt = db.prepare(`
-      INSERT INTO budgets (id, category, amount, currency) 
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(category) DO UPDATE SET 
+      INSERT INTO budgets (id, user_id, category, amount, currency) 
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, category) DO UPDATE SET 
         amount = excluded.amount,
         currency = excluded.currency,
         updated_at = CURRENT_TIMESTAMP
     `);
-    stmt.run(budget.id, budget.category, budget.amount, budget.currency || 'INR');
+    stmt.run(budget.id, budget.user_id, budget.category, budget.amount, budget.currency || 'INR');
     return { success: true };
   } catch (error) {
     console.error('Error setting budget:', error);
@@ -190,10 +225,10 @@ ipcMain.handle('db-set-budget', (event, budget) => {
   }
 });
 
-ipcMain.handle('db-delete-budget', (event, category) => {
+ipcMain.handle('db-delete-budget', (event, category, userId) => {
   try {
-    const stmt = db.prepare('DELETE FROM budgets WHERE category = ?');
-    stmt.run(category);
+    const stmt = db.prepare('DELETE FROM budgets WHERE category = ? AND user_id = ?');
+    stmt.run(category, userId);
     return { success: true };
   } catch (error) {
     console.error('Error deleting budget:', error);
@@ -212,10 +247,10 @@ ipcMain.handle('db-clear-all', () => {
 });
 
 // Settings handlers
-ipcMain.handle('db-get-setting', (event, key) => {
+ipcMain.handle('db-get-setting', (event, userId, key) => {
   try {
-    const stmt = db.prepare('SELECT value FROM settings WHERE key = ?');
-    const result = stmt.get(key);
+    const stmt = db.prepare('SELECT value FROM settings WHERE user_id = ? AND key = ?');
+    const result = stmt.get(userId, key);
     return result ? result.value : null;
   } catch (error) {
     console.error('Error getting setting:', error);
@@ -223,16 +258,16 @@ ipcMain.handle('db-get-setting', (event, key) => {
   }
 });
 
-ipcMain.handle('db-set-setting', (event, key, value) => {
+ipcMain.handle('db-set-setting', (event, userId, key, value) => {
   try {
     const stmt = db.prepare(`
-      INSERT INTO settings (key, value) 
-      VALUES (?, ?)
-      ON CONFLICT(key) DO UPDATE SET 
+      INSERT INTO settings (user_id, key, value) 
+      VALUES (?, ?, ?)
+      ON CONFLICT(user_id, key) DO UPDATE SET 
         value = excluded.value,
         updated_at = CURRENT_TIMESTAMP
     `);
-    stmt.run(key, value);
+    stmt.run(userId, key, value);
     return { success: true };
   } catch (error) {
     console.error('Error setting setting:', error);
@@ -291,6 +326,113 @@ ipcMain.handle('db-import-data', (event, data) => {
     return { success: true, message: 'Data imported successfully' };
   } catch (error) {
     console.error('Error importing data:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// User authentication handlers
+ipcMain.handle('db-create-user', (event, user) => {
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO users (id, username, email, password_hash, google_id, display_name, profile_picture)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(user.id, user.username, user.email, user.password_hash, user.google_id, user.display_name, user.profile_picture);
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('db-get-user-by-email', (event, email) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
+    return stmt.get(email);
+  } catch (error) {
+    console.error('Error getting user by email:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('db-get-user-by-google-id', (event, googleId) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM users WHERE google_id = ?');
+    return stmt.get(googleId);
+  } catch (error) {
+    console.error('Error getting user by Google ID:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('db-get-user-by-id', (event, userId) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+    return stmt.get(userId);
+  } catch (error) {
+    console.error('Error getting user by ID:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('db-update-user', (event, userId, updates) => {
+  try {
+    const stmt = db.prepare(`
+      UPDATE users 
+      SET username = ?, display_name = ?, profile_picture = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    stmt.run(updates.username, updates.display_name, updates.profile_picture, userId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating user:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Session management handlers
+ipcMain.handle('db-create-session', (event, session) => {
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO sessions (id, user_id, session_data, expires_at)
+      VALUES (?, ?, ?, ?)
+    `);
+    stmt.run(session.id, session.user_id, session.session_data, session.expires_at);
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating session:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('db-get-session', (event, sessionId) => {
+  try {
+    const stmt = db.prepare('SELECT * FROM sessions WHERE id = ? AND expires_at > datetime("now")');
+    return stmt.get(sessionId);
+  } catch (error) {
+    console.error('Error getting session:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('db-delete-session', (event, sessionId) => {
+  try {
+    const stmt = db.prepare('DELETE FROM sessions WHERE id = ?');
+    stmt.run(sessionId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('db-cleanup-expired-sessions', () => {
+  try {
+    const stmt = db.prepare('DELETE FROM sessions WHERE expires_at <= datetime("now")');
+    stmt.run();
+    return { success: true };
+  } catch (error) {
+    console.error('Error cleaning up sessions:', error);
     return { success: false, error: error.message };
   }
 });

@@ -3,6 +3,7 @@
 
 export interface Expense {
   id: string;
+  user_id?: string;
   amount: string;
   description: string;
   category: string;
@@ -12,26 +13,60 @@ export interface Expense {
 
 export interface Budget {
   id: string;
+  user_id?: string;
   category: string;
   amount: number;
   currency?: string;
 }
 
+export interface User {
+  id: string;
+  username?: string;
+  email: string;
+  password_hash?: string;
+  google_id?: string;
+  display_name?: string;
+  profile_picture?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Session {
+  id: string;
+  user_id: string;
+  session_data: string;
+  expires_at: string;
+  created_at: string;
+}
+
 export interface DatabaseAPI {
-  // Expense operations
-  getExpenses: () => Promise<Expense[]>;
+  // User authentication operations
+  createUser: (user: Omit<User, 'created_at' | 'updated_at'>) => Promise<{ success: boolean; error?: string }>;
+  getUserByEmail: (email: string) => Promise<User | null>;
+  getUserByGoogleId: (googleId: string) => Promise<User | null>;
+  getUserById: (userId: string) => Promise<User | null>;
+  updateUser: (userId: string, updates: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  
+  // Session management
+  createSession: (session: Omit<Session, 'created_at'>) => Promise<{ success: boolean; error?: string }>;
+  getSession: (sessionId: string) => Promise<Session | null>;
+  deleteSession: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
+  cleanupExpiredSessions: () => Promise<{ success: boolean; error?: string }>;
+  
+  // Expense operations (now user-specific)
+  getExpenses: (userId?: string) => Promise<Expense[]>;
   addExpense: (expense: Expense) => Promise<{ success: boolean; error?: string }>;
   updateExpense: (expense: Expense) => Promise<{ success: boolean; error?: string }>;
-  deleteExpense: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteExpense: (id: string, userId?: string) => Promise<{ success: boolean; error?: string }>;
   
-  // Budget operations
-  getBudgets: () => Promise<Budget[]>;
+  // Budget operations (now user-specific)
+  getBudgets: (userId?: string) => Promise<Budget[]>;
   setBudget: (budget: Budget) => Promise<{ success: boolean; error?: string }>;
-  deleteBudget: (category: string) => Promise<{ success: boolean; error?: string }>;
+  deleteBudget: (category: string, userId?: string) => Promise<{ success: boolean; error?: string }>;
   
-  // Settings operations
-  getSetting: (key: string) => Promise<string | null>;
-  setSetting: (key: string, value: string) => Promise<{ success: boolean; error?: string }>;
+  // Settings operations (now user-specific)
+  getSetting: (userId: string, key: string) => Promise<string | null>;
+  setSetting: (userId: string, key: string, value: string) => Promise<{ success: boolean; error?: string }>;
   
   // Utility operations
   clearAllData: () => Promise<{ success: boolean; error?: string }>;
@@ -45,9 +80,11 @@ export interface DatabaseAPI {
 const localStorageAPI: DatabaseAPI = {
   isElectron: false,
   
-  async getExpenses(): Promise<Expense[]> {
+  async getExpenses(_userId?: string): Promise<Expense[]> {
     const stored = localStorage.getItem('expenses');
-    return stored ? JSON.parse(stored) : [];
+    const allExpenses = stored ? JSON.parse(stored) : [];
+    // In localStorage mode, we don't filter by user (fallback mode)
+    return allExpenses;
   },
   
   async addExpense(expense: Expense): Promise<{ success: boolean; error?: string }> {
@@ -75,7 +112,7 @@ const localStorageAPI: DatabaseAPI = {
     }
   },
   
-  async deleteExpense(id: string): Promise<{ success: boolean; error?: string }> {
+  async deleteExpense(id: string, _userId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const expenses = await this.getExpenses();
       const filtered = expenses.filter(e => e.id !== id);
@@ -86,7 +123,7 @@ const localStorageAPI: DatabaseAPI = {
     }
   },
   
-  async getBudgets(): Promise<Budget[]> {
+  async getBudgets(_userId?: string): Promise<Budget[]> {
     const stored = localStorage.getItem('budgets');
     if (!stored) return [];
     
@@ -123,7 +160,7 @@ const localStorageAPI: DatabaseAPI = {
     }
   },
   
-  async deleteBudget(category: string): Promise<{ success: boolean; error?: string }> {
+  async deleteBudget(category: string, _userId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const budgets = await this.getBudgets();
       const filtered = budgets.filter(b => b.category !== category);
@@ -134,13 +171,14 @@ const localStorageAPI: DatabaseAPI = {
     }
   },
   
-  async getSetting(key: string): Promise<string | null> {
-    return localStorage.getItem(key);
+  async getSetting(userId: string, key: string): Promise<string | null> {
+    // In localStorage mode, we ignore userId and just use the key
+    return localStorage.getItem(`${userId}_${key}`) || localStorage.getItem(key);
   },
   
-  async setSetting(key: string, value: string): Promise<{ success: boolean; error?: string }> {
+  async setSetting(userId: string, key: string, value: string): Promise<{ success: boolean; error?: string }> {
     try {
-      localStorage.setItem(key, value);
+      localStorage.setItem(`${userId}_${key}`, value);
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -169,6 +207,118 @@ const localStorageAPI: DatabaseAPI = {
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }
+  },
+
+  // Authentication methods (localStorage fallback - limited functionality)
+  async createUser(user: Omit<User, 'created_at' | 'updated_at'>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const newUser = {
+        ...user,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      return users.find((user: User) => user.email === email) || null;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  async getUserByGoogleId(googleId: string): Promise<User | null> {
+    try {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      return users.find((user: User) => user.google_id === googleId) || null;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  async getUserById(userId: string): Promise<User | null> {
+    try {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      return users.find((user: User) => user.id === userId) || null;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  async updateUser(userId: string, updates: Partial<User>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const index = users.findIndex((user: User) => user.id === userId);
+      if (index !== -1) {
+        users[index] = { ...users[index], ...updates, updated_at: new Date().toISOString() };
+        localStorage.setItem('users', JSON.stringify(users));
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // Session management (localStorage fallback)
+  async createSession(session: Omit<Session, 'created_at'>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+      const newSession = {
+        ...session,
+        created_at: new Date().toISOString()
+      };
+      sessions.push(newSession);
+      localStorage.setItem('sessions', JSON.stringify(sessions));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  async getSession(sessionId: string): Promise<Session | null> {
+    try {
+      const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+      const session = sessions.find((s: Session) => s.id === sessionId);
+      
+      // Check if session is expired
+      if (session && new Date(session.expires_at) > new Date()) {
+        return session;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  },
+
+  async deleteSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+      const filtered = sessions.filter((s: Session) => s.id !== sessionId);
+      localStorage.setItem('sessions', JSON.stringify(filtered));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  async cleanupExpiredSessions(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+      const now = new Date();
+      const valid = sessions.filter((s: Session) => new Date(s.expires_at) > now);
+      localStorage.setItem('sessions', JSON.stringify(valid));
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
   }
 };
 
@@ -176,8 +326,8 @@ const localStorageAPI: DatabaseAPI = {
 const electronAPI: DatabaseAPI = {
   isElectron: true,
   
-  async getExpenses(): Promise<Expense[]> {
-    return (window as any).electronAPI.getExpenses();
+  async getExpenses(userId?: string): Promise<Expense[]> {
+    return (window as any).electronAPI.getExpenses(userId);
   },
   
   async addExpense(expense: Expense): Promise<{ success: boolean; error?: string }> {
@@ -188,28 +338,28 @@ const electronAPI: DatabaseAPI = {
     return (window as any).electronAPI.updateExpense(expense);
   },
   
-  async deleteExpense(id: string): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.deleteExpense(id);
+  async deleteExpense(id: string, userId?: string): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.deleteExpense(id, userId);
   },
   
-  async getBudgets(): Promise<Budget[]> {
-    return (window as any).electronAPI.getBudgets();
+  async getBudgets(userId?: string): Promise<Budget[]> {
+    return (window as any).electronAPI.getBudgets(userId);
   },
   
   async setBudget(budget: Budget): Promise<{ success: boolean; error?: string }> {
     return (window as any).electronAPI.setBudget(budget);
   },
   
-  async deleteBudget(category: string): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.deleteBudget(category);
+  async deleteBudget(category: string, userId?: string): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.deleteBudget(category, userId);
   },
   
-  async getSetting(key: string): Promise<string | null> {
-    return (window as any).electronAPI.getSetting(key);
+  async getSetting(userId: string, key: string): Promise<string | null> {
+    return (window as any).electronAPI.getSetting(userId, key);
   },
   
-  async setSetting(key: string, value: string): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.setSetting(key, value);
+  async setSetting(userId: string, key: string, value: string): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.setSetting(userId, key, value);
   },
   
   async clearAllData(): Promise<{ success: boolean; error?: string }> {
@@ -218,6 +368,44 @@ const electronAPI: DatabaseAPI = {
   
   async importData(data: { expenses?: Expense[]; budgets?: Record<string, number> }): Promise<{ success: boolean; error?: string; message?: string }> {
     return (window as any).electronAPI.importData(data);
+  },
+
+  // Authentication methods
+  async createUser(user: Omit<User, 'created_at' | 'updated_at'>): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.createUser(user);
+  },
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    return (window as any).electronAPI.getUserByEmail(email);
+  },
+
+  async getUserByGoogleId(googleId: string): Promise<User | null> {
+    return (window as any).electronAPI.getUserByGoogleId(googleId);
+  },
+
+  async getUserById(userId: string): Promise<User | null> {
+    return (window as any).electronAPI.getUserById(userId);
+  },
+
+  async updateUser(userId: string, updates: Partial<User>): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.updateUser(userId, updates);
+  },
+
+  // Session management
+  async createSession(session: Omit<Session, 'created_at'>): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.createSession(session);
+  },
+
+  async getSession(sessionId: string): Promise<Session | null> {
+    return (window as any).electronAPI.getSession(sessionId);
+  },
+
+  async deleteSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.deleteSession(sessionId);
+  },
+
+  async cleanupExpiredSessions(): Promise<{ success: boolean; error?: string }> {
+    return (window as any).electronAPI.cleanupExpiredSessions();
   }
 };
 
