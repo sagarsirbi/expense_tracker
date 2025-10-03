@@ -1,8 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Download, Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Target, TrendingDown } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell, Pie } from 'recharts';
-import { databaseAPI, migrateFromLocalStorage, isElectronApp } from './services/database';
-import './App.css';
+import { Download, Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Expense {
   id: string;
@@ -13,7 +13,8 @@ interface Expense {
   currency: 'INR' | 'EUR';
 }
 
-function App() {
+export function ExpenseTracker() {
+  const { user, logout } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState(['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others']);
   const [budgets, setBudgets] = useState<{[key: string]: number}>({});
@@ -98,21 +99,27 @@ function App() {
 
   // Load expenses from database
   const loadExpenses = async () => {
+    if (!user) return;
+    
     try {
-      const dbExpenses = await databaseAPI.getExpenses();
+      const dbExpenses = await databaseAPI.getExpenses(user.id);
       setExpenses(dbExpenses.map(exp => ({
-        ...exp,
+        id: exp.id,
+        amount: exp.amount,
+        description: exp.description,
+        category: exp.category,
+        date: exp.date,
         currency: (exp.currency as 'INR' | 'EUR') || 'INR'
       })));
     } catch (error) {
       console.error('Error loading expenses:', error);
     }
-  };
-
-  // Load budgets from database
+  };  // Load budgets from database
   const loadBudgets = async () => {
+    if (!user) return;
+    
     try {
-      const dbBudgets = await databaseAPI.getBudgets();
+      const dbBudgets = await databaseAPI.getBudgets(user.id);
       const budgetObj: {[key: string]: number} = {};
       dbBudgets.forEach(budget => {
         budgetObj[budget.category] = budget.amount;
@@ -192,8 +199,15 @@ function App() {
   };
 
   const addExpense = async () => {
+    if (!user) return;
+    
     if (newExpense.date && newExpense.amount && newExpense.description) {
-      const expenseToAdd = { ...newExpense, id: Date.now().toString(), currency };
+      const expenseToAdd = { 
+        ...newExpense, 
+        id: Date.now().toString(), 
+        currency,
+        user_id: user.id 
+      };
       
       try {
         const result = await databaseAPI.addExpense(expenseToAdd);
@@ -218,8 +232,10 @@ function App() {
   };
 
   const deleteExpense = async (id: string) => {
+    if (!user) return;
+    
     try {
-      const result = await databaseAPI.deleteExpense(id);
+      const result = await databaseAPI.deleteExpense(id, user.id);
       if (result.success) {
         setExpenses(expenses.filter(exp => exp.id !== id));
       } else {
@@ -230,21 +246,21 @@ function App() {
     }
   };
 
-  const setBudgetForCategory = async (category: string, amount: number) => {
+    const setBudgetForCategory = async (category: string, amount: number) => {
+    if (!user) return;
+    
     try {
       const budget = {
         id: `budget_${category}_${Date.now()}`,
+        user_id: user.id,
         category,
         amount,
-        currency: currency
+        currency
       };
       
       const result = await databaseAPI.setBudget(budget);
       if (result.success) {
-        setBudgets(prev => ({
-          ...prev,
-          [category]: amount
-        }));
+        setBudgets({ ...budgets, [category]: amount });
       } else {
         console.error('Failed to set budget:', result.error);
       }
@@ -324,13 +340,13 @@ function App() {
     // Category insights
     if (categoryTotals.length > 0) {
       const topCategory = categoryTotals[0];
-      const topCategoryPercentage = (topCategory.total / totalExpenses * 100).toFixed(0);
+      const topCategoryPercentage = (topCategory.total / totalExpenses * 100);
       
       insights.push({
         type: 'info',
         title: 'Top Spending Category',
-        message: `${topCategory.category} accounts for ${topCategoryPercentage}% of your monthly expenses.`,
-        suggestion: Number(topCategoryPercentage) > 40 ? 'Consider if this category has room for optimization.' : 'Your spending is well distributed across categories.'
+        message: `${topCategory.category} accounts for ${topCategoryPercentage.toFixed(0)}% of your monthly expenses.`,
+        suggestion: topCategoryPercentage > 40 ? 'Consider if this category has room for optimization.' : 'Your spending is well distributed across categories.'
       });
     }
 
@@ -354,97 +370,6 @@ function App() {
     }
 
     return insights;
-  };
-
-  // Advanced Analytics Functions
-  const getWeeklySpendingPattern = () => {
-    const weeklyData = Array(7).fill(0).map((_, index) => ({
-      day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][index],
-      amount: 0,
-      count: 0
-    }));
-
-    filteredExpenses.forEach(exp => {
-      const dayOfWeek = new Date(exp.date).getDay();
-      const amount = convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR');
-      weeklyData[dayOfWeek].amount += amount;
-      weeklyData[dayOfWeek].count += 1;
-    });
-
-    return weeklyData;
-  };
-
-  const getCategoryTrends = () => {
-    const last3Months = [];
-    const now = new Date();
-    
-    for (let i = 2; i >= 0; i--) {
-      const targetMonth = now.getMonth() - i;
-      const targetYear = now.getFullYear();
-      const adjustedMonth = targetMonth < 0 ? targetMonth + 12 : targetMonth;
-      const adjustedYear = targetMonth < 0 ? targetYear - 1 : targetYear;
-      
-      const monthExpenses = expenses.filter(exp => {
-        const expDate = new Date(exp.date);
-        return expDate.getMonth() === adjustedMonth && expDate.getFullYear() === adjustedYear;
-      });
-
-      const categoryData = categories.map(cat => ({
-        category: cat,
-        amount: monthExpenses
-          .filter(exp => exp.category === cat)
-          .reduce((sum, exp) => sum + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR'), 0)
-      }));
-
-      last3Months.push({
-        month: new Date(adjustedYear, adjustedMonth).toLocaleDateString('en-US', { month: 'short' }),
-        categories: categoryData
-      });
-    }
-
-    return last3Months;
-  };
-
-  const getSpendingVelocity = () => {
-    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const daysPassed = Math.min(new Date().getDate(), daysInMonth);
-    const currentSpent = totalExpenses;
-    const projectedMonthlySpend = (currentSpent / daysPassed) * daysInMonth;
-    
-    return {
-      currentSpent,
-      projectedSpend: projectedMonthlySpend,
-      dailyAverage: currentSpent / daysPassed,
-      remainingBudget: Object.values(budgets).reduce((sum, budget) => sum + budget, 0) - currentSpent
-    };
-  };
-
-  const getCurrencyBreakdown = () => {
-    const inrExpenses = filteredExpenses.filter(exp => exp.currency === 'INR' || !exp.currency);
-    const eurExpenses = filteredExpenses.filter(exp => exp.currency === 'EUR');
-    
-    const inrTotal = inrExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || '0'), 0);
-    const eurTotal = eurExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || '0'), 0);
-    
-    return {
-      inr: { amount: inrTotal, count: inrExpenses.length, percentage: (inrTotal / (inrTotal + eurTotal * (1/exchangeRate))) * 100 },
-      eur: { amount: eurTotal, count: eurExpenses.length, percentage: (eurTotal * (1/exchangeRate) / (inrTotal + eurTotal * (1/exchangeRate))) * 100 }
-    };
-  };
-
-  const getFinancialHealthScore = () => {
-    const budgetAdherence = Object.keys(budgets).length > 0 ? 
-      Object.keys(budgets).map(cat => {
-        const spent = filteredExpenses
-          .filter(exp => exp.category === cat)
-          .reduce((sum, exp) => sum + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR'), 0);
-        return Math.min(100, (budgets[cat] / spent) * 100);
-      }).reduce((sum, score) => sum + score, 0) / Object.keys(budgets).length : 50;
-
-    const spendingConsistency = Math.max(0, 100 - Math.abs(monthChange));
-    const categoryDiversification = Math.min(100, (categoryTotals.length / categories.length) * 100);
-    
-    return Math.round((budgetAdherence + spendingConsistency + categoryDiversification) / 3);
   };
 
   // Filter expenses for selected month/year
@@ -781,6 +706,28 @@ function App() {
                 </button>
               </div>
             </div>
+
+            {/* User Profile Section */}
+            <div className="control-section user-section">
+              <div className="section-label">
+                <User size={14} />
+                Account
+              </div>
+              <div className="user-profile">
+                <div className="user-info">
+                  <span className="user-name">{user?.display_name || user?.username || user?.email}</span>
+                  <span className="user-email">{user?.email}</span>
+                </div>
+                <button 
+                  onClick={logout}
+                  className="action-btn logout-btn"
+                  title="Sign out"
+                >
+                  <LogOut size={14} />
+                  <span className="btn-text">Logout</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -819,7 +766,7 @@ function App() {
             <div className="summary-card-content">
               <h3>Top Category</h3>
               <p>{maxCategory ? maxCategory.category : 'N/A'}</p>
-              <span className="date-small">
+              <span style={{fontSize: '12px', opacity: 0.8}}>
                 {maxCategory ? formatCurrency(maxCategory.total) : formatCurrency(0)}
               </span>
             </div>
@@ -852,185 +799,6 @@ function App() {
               <DollarSign size={32} className="summary-card-icon" />
             </div>
           )}
-        </div>
-
-        {/* Enhanced Analytics Dashboard */}
-        <div className="analytics-dashboard">
-          {/* Financial Health Score */}
-          <div className="analytics-section">
-            <div className="section-header">
-              <h3>Financial Health Score</h3>
-              <p>Based on budget adherence, spending consistency, and category diversification</p>
-            </div>
-            <div className="health-score-container">
-              <div className="health-score-circle">
-                <div className="score-text">
-                  <span className="score-number">{getFinancialHealthScore()}</span>
-                  <span className="score-label">/ 100</span>
-                </div>
-              </div>
-              <div className="health-score-details">
-                <div className="health-metric">
-                  <span className="metric-label">Budget Adherence</span>
-                  <div className="metric-bar">
-                    <div className="metric-fill" style={{width: `${Math.min(100, Object.keys(budgets).length > 0 ? 85 : 50)}%`}}></div>
-                  </div>
-                </div>
-                <div className="health-metric">
-                  <span className="metric-label">Spending Consistency</span>
-                  <div className="metric-bar">
-                    <div className="metric-fill" style={{width: `${Math.max(0, 100 - Math.abs(monthChange))}%`}}></div>
-                  </div>
-                </div>
-                <div className="health-metric">
-                  <span className="metric-label">Category Diversification</span>
-                  <div className="metric-bar">
-                    <div className="metric-fill" style={{width: `${Math.min(100, (categoryTotals.length / categories.length) * 100)}%`}}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Currency Breakdown */}
-          <div className="analytics-section">
-            <div className="section-header">
-              <h3>Currency Analysis</h3>
-              <p>Your spending distribution across currencies</p>
-            </div>
-            <div className="currency-breakdown">
-              {(() => {
-                const currencyData = getCurrencyBreakdown();
-                return (
-                  <div className="currency-cards">
-                    <div className="currency-card inr">
-                      <div className="currency-flag">🇮🇳</div>
-                      <div className="currency-details">
-                        <h4>Indian Rupees</h4>
-                        <p className="currency-amount">₹{currencyData.inr.amount.toLocaleString()}</p>
-                        <p className="currency-count">{currencyData.inr.count} transactions</p>
-                        <p className="currency-percentage">{currencyData.inr.percentage.toFixed(1)}% of total</p>
-                      </div>
-                    </div>
-                    <div className="currency-card eur">
-                      <div className="currency-flag">🇪🇺</div>
-                      <div className="currency-details">
-                        <h4>Euros</h4>
-                        <p className="currency-amount">€{currencyData.eur.amount.toLocaleString()}</p>
-                        <p className="currency-count">{currencyData.eur.count} transactions</p>
-                        <p className="currency-percentage">{currencyData.eur.percentage.toFixed(1)}% of total</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Weekly Spending Pattern */}
-          <div className="analytics-section">
-            <div className="section-header">
-              <h3>Weekly Spending Pattern</h3>
-              <p>Your spending habits by day of the week</p>
-            </div>
-            <div className="chart-container">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={getWeeklySpendingPattern()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Amount']} />
-                  <Bar dataKey="amount" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Spending Velocity */}
-          <div className="analytics-section">
-            <div className="section-header">
-              <h3>Spending Velocity</h3>
-              <p>Track your spending pace and projections</p>
-            </div>
-            <div className="velocity-cards">
-              {(() => {
-                const velocity = getSpendingVelocity();
-                return (
-                  <>
-                    <div className="velocity-card">
-                      <TrendingUp className="velocity-icon" />
-                      <div className="velocity-content">
-                        <h4>Daily Average</h4>
-                        <p className="velocity-value">{formatCurrency(velocity.dailyAverage)}</p>
-                        <p className="velocity-label">per day this month</p>
-                      </div>
-                    </div>
-                    <div className="velocity-card">
-                      <Target className="velocity-icon" />
-                      <div className="velocity-content">
-                        <h4>Projected Spend</h4>
-                        <p className="velocity-value">{formatCurrency(velocity.projectedSpend)}</p>
-                        <p className="velocity-label">for this month</p>
-                      </div>
-                    </div>
-                    <div className="velocity-card">
-                      <TrendingDown className="velocity-icon" />
-                      <div className="velocity-content">
-                        <h4>Budget Remaining</h4>
-                        <p className="velocity-value">{formatCurrency(velocity.remainingBudget)}</p>
-                        <p className="velocity-label">left to spend</p>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Enhanced Category Breakdown with Pie Chart */}
-          <div className="analytics-section">
-            <div className="section-header">
-              <h3>Category Distribution</h3>
-              <p>Visual breakdown of your spending by category</p>
-            </div>
-            <div className="chart-row">
-              <div className="chart-container">
-                <ResponsiveContainer width="100%" height={300}>
-                  <RechartsPieChart>
-                    <Pie
-                      data={categoryTotals}
-                      dataKey="total"
-                      nameKey="category"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({category, percentage}) => `${category}: ${percentage}%`}
-                    >
-                      {categoryTotals.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getColorForCategory(entry.category)} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Amount']} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="category-legend">
-                {categoryTotals.map((cat) => (
-                  <div key={cat.category} className="legend-item">
-                    <div 
-                      className="legend-color" 
-                      style={{backgroundColor: getColorForCategory(cat.category)}}
-                    ></div>
-                    <span className="legend-category">{cat.category}</span>
-                    <span className="legend-amount">{formatCurrency(cat.total)}</span>
-                    <span className="legend-percentage">
-                      {((cat.total / totalExpenses) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Monthly Comparison Section */}
@@ -1204,19 +972,20 @@ function App() {
                   Add Custom Category
                 </a>
               ) : (
-                <div className="budget-section">
-                  <div className="budget-input-row">
+                <div style={{marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #f3f4f6'}}>
+                  <div style={{display: 'flex', gap: '10px'}}>
                     <input
                       type="text"
                       placeholder="New category name"
                       value={newCategory}
                       onChange={(e) => setNewCategory(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addCategory()}
-                      className="form-input budget-input"
+                      className="form-input"
+                      style={{flex: 1}}
                     />
                     <button
                       onClick={addCategory}
-                      className="budget-set-btn"
+                      style={{padding: '8px 16px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer'}}
                     >
                       Add
                     </button>
@@ -1225,7 +994,7 @@ function App() {
                         setShowAddCategory(false);
                         setNewCategory('');
                       }}
-                      className="budget-clear-btn"
+                      style={{padding: '8px 16px', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '8px', cursor: 'pointer'}}
                     >
                       Cancel
                     </button>
@@ -1242,30 +1011,51 @@ function App() {
                   No expenses for {getMonthName(selectedMonth)} {selectedYear}. Add your first expense above!
                 </div>
               ) : (
-                <div className="expense-list-container">
+                <div style={{maxHeight: '400px', overflowY: 'auto'}}>
                   {(filteredExpenses as any[]).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((exp) => (
-                    <div key={exp.id} className="expense-item">
+                    <div key={exp.id} style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
                       <div>
-                        <div className="expense-item-header">
-                          <span className="expense-description">{exp.description}</span>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px'}}>
+                          <span style={{fontWeight: '500', color: '#1f2937'}}>{exp.description}</span>
                           <span
-                            className="expense-category-badge"
-                            style={{backgroundColor: getColorForCategory(exp.category)}}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              color: 'white',
+                              backgroundColor: getColorForCategory(exp.category)
+                            }}
                           >
                             {exp.category}
                           </span>
                         </div>
-                        <p className="expense-meta">
+                        <p style={{margin: 0, fontSize: '14px', color: '#6b7280'}}>
                           {new Date(exp.date).toLocaleDateString('en-IN', {year: 'numeric', month: 'short', day: 'numeric'})}
                         </p>
                       </div>
-                      <div className="expense-item-right">
-                        <span className="expense-amount">
+                      <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                        <span style={{fontSize: '18px', fontWeight: '600', color: '#1f2937'}}>
                           {formatCurrency(parseFloat(exp.amount), exp.currency || 'INR')}
                         </span>
                         <button
                           onClick={() => deleteExpense(exp.id)}
-                          className="expense-delete-btn"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            padding: '8px',
+                            borderRadius: '6px'
+                          }}
                           title="Delete expense"
                         >
                           <Trash2 size={16} />
@@ -1289,41 +1079,53 @@ function App() {
                 Add expenses for {getMonthName(selectedMonth)} {selectedYear} to see breakdown
               </div>
             ) : (
-              <div className="category-summary-container">
+              <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                 {categoryTotals.sort((a, b) => b.total - a.total).map((cat) => {
                   const percentage = (cat.total / totalExpenses * 100).toFixed(1);
                   const budgetStatus = getBudgetStatus(cat.category);
                   return (
                     <div key={cat.category}>
-                      <div className="category-item">
-                        <div className="category-item-left">
-                          <span className="category-name">{cat.category}</span>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <span style={{fontWeight: '500', color: '#374151'}}>{cat.category}</span>
                           {budgetStatus && (
-                            <span className="budget-status">
+                            <span 
+                              className={`budget-status ${budgetStatus.status}`}
+                              style={{fontSize: '10px', padding: '2px 6px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.8)'}}
+                            >
                               Budget: {formatCurrency(budgetStatus.budget)}
                             </span>
                           )}
                         </div>
-                        <span className="category-amount">{formatCurrency(cat.total)}</span>
+                        <span style={{fontSize: '14px', fontWeight: '600', color: '#1f2937'}}>{formatCurrency(cat.total)}</span>
                       </div>
-                      <div className="category-progress-bar">
+                      <div style={{
+                        height: '8px',
+                        backgroundColor: '#f3f4f6',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        marginBottom: '4px'
+                      }}>
                         <div
-                          className="category-progress-fill"
                           style={{
+                            height: '100%',
+                            borderRadius: '4px',
+                            transition: 'width 0.5s ease',
                             width: `${percentage}%`,
                             backgroundColor: getColorForCategory(cat.category)
                           }}
                         />
                       </div>
-                      <div className="category-meta-row">
-                        <p className="category-percentage">{percentage}% of total</p>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <p style={{margin: 0, fontSize: '12px', color: '#6b7280'}}>{percentage}% of total</p>
                         {budgetStatus && (
-                          <p className="category-budget-info"
-                            style={{
-                              color: budgetStatus.status === 'over' ? '#dc3545' : 
-                                     budgetStatus.status === 'warning' ? '#fd7e14' : '#28a745'
-                            }}
-                          >
+                          <p style={{
+                            margin: 0, 
+                            fontSize: '11px', 
+                            color: budgetStatus.status === 'over' ? '#dc3545' : 
+                                   budgetStatus.status === 'warning' ? '#fd7e14' : '#28a745',
+                            fontWeight: '500'
+                          }}>
                             {budgetStatus.percentage.toFixed(0)}% of budget used
                           </p>
                         )}
@@ -1407,4 +1209,4 @@ function App() {
   );
 }
 
-export default App
+// Don't export as default since this will be imported by the main App
