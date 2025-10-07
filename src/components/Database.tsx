@@ -221,6 +221,7 @@ export function Database() {
             value={filter}
             onChange={(e) => setFilter(e.target.value as any)}
             className="filter-select"
+            title="Filter data type"
           >
             <option value="all">All Data</option>
             <option value="expenses">Expenses Only</option>
@@ -309,7 +310,7 @@ export function Database() {
         <div className="quick-links">
           <h4>Quick Access:</h4>
           <div className="month-links">
-            {monthNames.map((month, index) => (
+            {monthNames.map((month) => (
               <Link 
                 key={month}
                 to={`/${month}/database`}
