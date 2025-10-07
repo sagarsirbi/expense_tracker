@@ -3,6 +3,8 @@ import { Download, Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
+import { useLogger } from '../services/logger';
+import ErrorBoundary from './ErrorBoundary';
 
 interface Expense {
   id: string;
@@ -14,6 +16,7 @@ interface Expense {
 }
 
 export function ExpenseTracker() {
+  const componentLogger = useLogger('ExpenseTracker');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState(['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others']);
   const [budgets, setBudgets] = useState<{[key: string]: number}>({});
@@ -76,6 +79,7 @@ export function ExpenseTracker() {
 
   // Fetch exchange rate on component mount and initialize database
   useEffect(() => {
+    componentLogger.logMount({ currency, isElectronApp: isElectronApp() });
     fetchExchangeRate();
     initializeDatabase();
   }, []);
@@ -83,8 +87,11 @@ export function ExpenseTracker() {
   // Initialize database and load data
   const initializeDatabase = async () => {
     try {
+      componentLogger.info('Initializing database');
+      
       // Migrate from localStorage if in Electron and localStorage has data
       if (isElectronApp()) {
+        componentLogger.info('Running in Electron, attempting migration from localStorage');
         await migrateFromLocalStorage();
       }
       
@@ -202,16 +209,43 @@ export function ExpenseTracker() {
       };
       
       try {
+        componentLogger.logAction('Add Expense Attempt', {
+          category: expenseToAdd.category,
+          amount: expenseToAdd.amount,
+          currency: expenseToAdd.currency
+        });
+        
         const result = await databaseAPI.addExpense(expenseToAdd);
         if (result.success) {
           setExpenses([...expenses, expenseToAdd]);
           setNewExpense({ date: '', category: newExpense.category, description: '', amount: '' });
+          
+          componentLogger.logAction('Add Expense Success', {
+            expenseId: expenseToAdd.id,
+            category: expenseToAdd.category,
+            amount: expenseToAdd.amount
+          });
         } else {
+          componentLogger.logError(new Error(`Failed to add expense: ${result.error}`), {
+            expense: expenseToAdd
+          });
           console.error('Failed to add expense:', result.error);
         }
       } catch (error) {
+        componentLogger.logError(error as Error, {
+          action: 'addExpense',
+          expense: expenseToAdd
+        });
         console.error('Error adding expense:', error);
       }
+    } else {
+      componentLogger.warn('Attempted to add incomplete expense', {
+        missingFields: {
+          date: !newExpense.date,
+          amount: !newExpense.amount,
+          description: !newExpense.description
+        }
+      });
     }
   };
 

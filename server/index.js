@@ -6,6 +6,7 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const Database = require('better-sqlite3');
 const path = require('path');
+const { logger, createRequestLogger, errorHandler } = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,7 +14,12 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(helmet());
 app.use(cors());
-app.use(morgan('combined'));
+app.use(createRequestLogger); // Add logging middleware
+app.use(morgan('combined', {
+  stream: {
+    write: (message) => logger.info('HTTP Request', { message: message.trim() })
+  }
+}));
 app.use(express.json());
 
 // Database setup
@@ -22,9 +28,9 @@ let db;
 
 try {
   db = new Database(dbPath);
-  console.log('Connected to SQLite database');
+  logger.info('Connected to SQLite database', { dbPath });
 } catch (error) {
-  console.error('Database connection error:', error);
+  logger.error('Database connection error', error);
   process.exit(1);
 }
 
@@ -202,6 +208,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 app.get('/api/expenses', (req, res) => {
   try {
     const { month, category } = req.query;
+    req.logger.logAPICall('/api/expenses', 'GET', 200, { month, category });
+    
     let query = 'SELECT * FROM expenses WHERE userId = ?';
     const params = ['default'];
 
@@ -217,11 +225,21 @@ app.get('/api/expenses', (req, res) => {
 
     query += ' ORDER BY date DESC';
     
+    const startTime = Date.now();
     const stmt = db.prepare(query);
     const expenses = stmt.all(params);
+    const duration = Date.now() - startTime;
+    
+    req.logger.logDatabaseOperation('SELECT', 'expenses', { 
+      count: expenses.length, 
+      duration: `${duration}ms`,
+      filters: { month, category }
+    });
+    
     res.json(expenses);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    req.logger.logError(error, { endpoint: '/api/expenses', method: 'GET' });
+    res.status(500).json({ error: error.message, correlationId: req.correlationId });
   }
 });
 
@@ -278,17 +296,42 @@ app.get('/api/expenses', (req, res) => {
 app.post('/api/expenses', (req, res) => {
   try {
     const { id, date, category, description, amount } = req.body;
+    
+    req.logger.logAPICall('/api/expenses', 'POST', 201, { 
+      expenseId: id, 
+      category, 
+      amount 
+    });
 
     if (!id || !date || !category || !description || amount === undefined) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      req.logger.warn('Invalid expense creation attempt', { 
+        missingFields: { id: !id, date: !date, category: !category, description: !description, amount: amount === undefined },
+        correlationId: req.correlationId
+      });
+      return res.status(400).json({ error: 'Missing required fields', correlationId: req.correlationId });
     }
 
+    const startTime = Date.now();
     const stmt = db.prepare('INSERT INTO expenses (id, date, category, description, amount, userId) VALUES (?, ?, ?, ?, ?, ?)');
     stmt.run(id, date, category, description, amount, 'default');
+    const duration = Date.now() - startTime;
+    
+    req.logger.logDatabaseOperation('INSERT', 'expenses', { 
+      expenseId: id, 
+      duration: `${duration}ms` 
+    });
+    
+    req.logger.logBusinessEvent('Expense Created', {
+      expenseId: id,
+      category,
+      amount,
+      date
+    });
 
     res.status(201).json({ id, date, category, description, amount, userId: 'default' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    req.logger.logError(error, { endpoint: '/api/expenses', method: 'POST', body: req.body });
+    res.status(500).json({ error: error.message, correlationId: req.correlationId });
   }
 });
 
@@ -659,23 +702,148 @@ app.get('/api/analytics/monthly', (req, res) => {
  *                   type: string
  *                   example: "Connected"
  */
+/**
+ * @swagger
+ * /api/logs:
+ *   post:
+ *     summary: Submit frontend logs
+ *     tags: [System]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               source:
+ *                 type: string
+ *                 example: "frontend"
+ *               level:
+ *                 type: string
+ *                 example: "error"
+ *               message:
+ *                 type: string
+ *                 example: "User action failed"
+ *               context:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Log received
+ */
+app.post('/api/logs', (req, res) => {
+  try {
+    const logData = req.body;
+    
+    // Log the frontend message to our backend logger
+    const level = logData.level || 'info';
+    const message = `Frontend: ${logData.message}`;
+    const context = {
+      source: 'frontend',
+      frontendSessionId: logData.sessionId,
+      frontendCorrelationId: logData.correlationId,
+      url: logData.url,
+      userAgent: logData.userAgent,
+      ...logData.context
+    };
+    
+    req.logger[level](message, context);
+    
+    res.json({ status: 'logged', correlationId: req.correlationId });
+  } catch (error) {
+    req.logger.logError(error, { endpoint: '/api/logs', method: 'POST' });
+    res.status(500).json({ error: error.message, correlationId: req.correlationId });
+  }
+});
+
+/**
+ * @swagger
+ * /api/logs:
+ *   get:
+ *     summary: Get recent logs (for debugging)
+ *     tags: [System]
+ *     parameters:
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: string
+ *         description: Filter by log level
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of logs to return (max 100)
+ *     responses:
+ *       200:
+ *         description: Log entries
+ */
+app.get('/api/logs', (req, res) => {
+  try {
+    const fs = require('fs');
+    const { level, limit = 50 } = req.query;
+    const maxLimit = Math.min(parseInt(limit) || 50, 100);
+    
+    req.logger.logAPICall('/api/logs', 'GET', 200, { level, limit: maxLimit });
+    
+    // Read the latest log file
+    const logsDir = path.join(__dirname, '..', 'logs');
+    const today = new Date().toISOString().split('T')[0];
+    const logFile = path.join(logsDir, `application-${today}.log`);
+    
+    if (!fs.existsSync(logFile)) {
+      return res.json({ logs: [], message: 'No logs found for today' });
+    }
+    
+    const logContent = fs.readFileSync(logFile, 'utf8');
+    const logLines = logContent.trim().split('\n').filter(line => line.trim());
+    
+    let logs = logLines
+      .slice(-maxLimit * 2) // Get more than needed in case of filtering
+      .map(line => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter(log => log !== null);
+    
+    // Filter by level if specified
+    if (level) {
+      logs = logs.filter(log => log.level === level);
+    }
+    
+    // Take only the requested amount
+    logs = logs.slice(-maxLimit);
+    
+    res.json({ logs, count: logs.length });
+  } catch (error) {
+    req.logger.logError(error, { endpoint: '/api/logs', method: 'GET' });
+    res.status(500).json({ error: error.message, correlationId: req.correlationId });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   try {
     // Test database connection
     const stmt = db.prepare('SELECT 1');
     stmt.get();
     
+    req.logger.info('Health check performed', { status: 'OK' });
+    
     res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
-      database: 'Connected'
+      database: 'Connected',
+      correlationId: req.correlationId
     });
   } catch (error) {
+    req.logger.logError(error, { endpoint: '/api/health' });
     res.status(500).json({
       status: 'ERROR',
       timestamp: new Date().toISOString(),
       database: 'Disconnected',
-      error: error.message
+      error: error.message,
+      correlationId: req.correlationId
     });
   }
 });
@@ -691,18 +859,21 @@ app.get('/dashboard', (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
+app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  req.logger?.warn('404 - Endpoint not found', { url: req.url, method: req.method });
+  res.status(404).json({ error: 'Endpoint not found', correlationId: req.correlationId });
 });
 
 // Start server
 app.listen(PORT, () => {
+  logger.info('Server started', { 
+    port: PORT, 
+    apiDocs: `http://localhost:${PORT}/api-docs`,
+    dbPath 
+  });
   console.log(`🚀 Expense Tracker API Server running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation available at http://localhost:${PORT}/api-docs`);
   console.log(`💾 Database: ${dbPath}`);
@@ -710,10 +881,13 @@ app.listen(PORT, () => {
 
 // Graceful shutdown
 process.on('SIGINT', () => {
+  logger.info('Shutdown signal received');
   console.log('\n⏹️  Shutting down server...');
   if (db) {
     db.close();
+    logger.info('Database connection closed');
     console.log('✅ Database connection closed');
   }
+  logger.info('Server shutdown complete');
   process.exit(0);
 });
