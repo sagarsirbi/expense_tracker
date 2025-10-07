@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - Development Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .link-card {
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            padding: 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
+        }
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        .link-card h3 {
+            margin: 0 0 10px 0;
+            color: #2d3748;
+            font-size: 1.3em;
+        }
+        .link-card p {
+            margin: 0;
+            color: #4a5568;
+            font-size: 0.95em;
+        }
+        .link-card .url {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85em;
+            color: #667eea;
+            background: #f7fafc;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        .status {
+            display: flex;
+            justify-content: space-between;
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            text-align: center;
+        }
+        .status-item h4 {
+            margin: 0 0 5px 0;
+            color: #2d3748;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+        }
+        .status-running {
+            background: #48bb78;
+        }
+        .features {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .features h3 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+        .features ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .features li {
+            margin-bottom: 5px;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 Expense Tracker</h1>
+        <p class="subtitle">Development Dashboard - Quick Access to Frontend & API</p>
+        
+        <div class="status">
+            <div class="status-item">
+                <div class="status-dot status-running"></div>
+                <h4>Frontend</h4>
+                <p>React App</p>
+            </div>
+            <div class="status-item">
+                <div class="status-dot status-running"></div>
+                <h4>API Server</h4>
+                <p>Express + Swagger</p>
+            </div>
+            <div class="status-item">
+                <div class="status-dot status-running"></div>
+                <h4>Database</h4>
+                <p>SQLite</p>
+            </div>
+        </div>
+
+        <div class="links-grid">
+            <a href="http://localhost:5174/" class="link-card" target="_blank">
+                <h3>🎯 Frontend Application</h3>
+                <p>The main React application with expense tracking, budgeting, analytics, and database navigation features.</p>
+                <div class="url">http://localhost:5174/</div>
+            </a>
+
+            <a href="http://localhost:3001/api-docs" class="link-card" target="_blank">
+                <h3>📚 API Documentation</h3>
+                <p>Interactive Swagger documentation where you can explore and test all API endpoints.</p>
+                <div class="url">http://localhost:3001/api-docs</div>
+            </a>
+
+            <a href="http://localhost:5174/january/database" class="link-card" target="_blank">
+                <h3>🗄️ Database View</h3>
+                <p>Direct database access via URL routing. Change the month name to view different months.</p>
+                <div class="url">http://localhost:5174/{month}/database</div>
+            </a>
+
+            <a href="http://localhost:3001/api/health" class="link-card" target="_blank">
+                <h3>💚 Health Check</h3>
+                <p>API health status and database connection information.</p>
+                <div class="url">http://localhost:3001/api/health</div>
+            </a>
+        </div>
+
+        <div class="features">
+            <h3>🌟 Key Features</h3>
+            <ul>
+                <li><strong>Frontend:</strong> React with TypeScript, Router navigation, Analytics charts, Multi-currency support</li>
+                <li><strong>API:</strong> RESTful endpoints, Swagger documentation, Request validation, Analytics endpoints</li>
+                <li><strong>Database:</strong> SQLite with expenses and budgets tables, URL-based month filtering</li>
+                <li><strong>Navigation:</strong> Dashboard/History tabs, Database routing (/month/database)</li>
+                <li><strong>Testing:</strong> Interactive API testing via Swagger UI</li>
+            </ul>
+        </div>
+
+        <div class="features">
+            <h3>🛠️ Quick Commands</h3>
+            <ul>
+                <li><code>npm run dev</code> - Start frontend only</li>
+                <li><code>npm run api-dev</code> - Start API server only</li>
+                <li><code>npm run dev-full</code> - Start both frontend and API</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

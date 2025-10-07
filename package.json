@@ -9,6 +9,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "api-server": "node server/index.js",
+    "api-dev": "nodemon server/index.js",
+    "dev-full": "concurrently \"npm run dev\" \"npm run api-dev\"",
     "electron": "electron .",
     "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5175 && electron .\"",
     "electron-build": "npm run build && electron-builder",
@@ -17,13 +20,24 @@
     "electron-build-linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
     "@types/react-router-dom": "^5.3.3",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "better-sqlite3": "^12.4.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
     "lucide-react": "^0.544.0",
+    "morgan": "^1.10.1",
+    "nodemon": "^3.1.10",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3",
-    "recharts": "^3.2.1"
+    "recharts": "^3.2.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
