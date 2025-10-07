@@ -17,6 +17,7 @@
     "electron-build-linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@types/react-router-dom": "^5.3.3",
     "better-sqlite3": "^12.4.1",
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
