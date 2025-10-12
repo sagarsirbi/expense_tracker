@@ -61,12 +61,12 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Expense Tracker API',
+      title: 'Arthiq API',
       version: '1.0.0',
       description: 'A comprehensive API for managing personal expenses and budgets',
       contact: {
-        name: 'Expense Tracker Team',
-        email: 'support@expensetracker.com'
+        name: 'Arthiq Team',
+        email: 'support@arthiq.com'
       }
     },
     servers: [
@@ -167,7 +167,7 @@ const swaggerSpecs = swaggerJsdoc(swaggerOptions);
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Expense Tracker API Documentation'
+  customSiteTitle: 'Arthiq API Documentation'
 }));
 
 /**
@@ -874,7 +874,7 @@ app.listen(PORT, () => {
     apiDocs: `http://localhost:${PORT}/api-docs`,
     dbPath 
   });
-  console.log(`🚀 Expense Tracker API Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Arthiq API Server running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation available at http://localhost:${PORT}/api-docs`);
   console.log(`💾 Database: ${dbPath}`);
 });

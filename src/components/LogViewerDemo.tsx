@@ -1,4 +1,3 @@
-import React from 'react';
 import './LogViewer.css';
 import './LogViewer.utils.css';
 

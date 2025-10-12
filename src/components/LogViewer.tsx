@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import { useLogger } from '../services/logger';
 import { RefreshCw, Download, Filter, AlertCircle, Info, AlertTriangle, Bug } from 'lucide-react';
 import './LogViewer.css';

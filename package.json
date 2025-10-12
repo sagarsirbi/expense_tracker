@@ -1,5 +1,5 @@
 {
-  "name": "expense_tracker",
+  "name": "arthiq",
   "private": true,
   "version": "1.0.0",
   "main": "electron/main.js",
@@ -71,8 +71,8 @@
     "vite": "npm:rolldown-vite@7.1.14"
   },
   "build": {
-    "appId": "com.expensetracker.app",
-    "productName": "Expense Tracker",
+    "appId": "com.arthiq.app",
+    "productName": "Arthiq",
     "directories": {
       "output": "dist-electron"
     },
@@ -83,8 +83,8 @@
     ],
     "extraResources": [
       {
-        "from": "expense_tracker.db",
-        "to": "expense_tracker.db",
+        "from": "arthiq.db",
+        "to": "arthiq.db",
         "filter": [
           "**/*"
         ]

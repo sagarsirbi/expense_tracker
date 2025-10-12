@@ -10,8 +10,8 @@ let db;
 // Database initialization
 function initDatabase() {
   const dbPath = isDev 
-    ? path.join(__dirname, '..', 'expense_tracker.db')
-    : path.join(process.resourcesPath, 'expense_tracker.db');
+    ? path.join(__dirname, '..', 'arthiq.db')
+    : path.join(process.resourcesPath, 'arthiq.db');
     
   db = new Database(dbPath);
   

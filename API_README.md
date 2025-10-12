@@ -1,4 +1,4 @@
-# Expense Tracker API
+# Arthiq API
 
 A comprehensive RESTful API for managing personal expenses and budgets with Swagger documentation.
 
@@ -152,4 +152,4 @@ To modify the API:
 3. Restart the server with `npm run api-dev` (auto-restarts on changes)
 4. Test changes in the Swagger UI
 
-Enjoy exploring and testing your Expense Tracker API! 🎉
+Enjoy exploring and testing your Arthiq API! 🎉

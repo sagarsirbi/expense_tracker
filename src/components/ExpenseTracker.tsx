@@ -4,7 +4,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
 import { useLogger } from '../services/logger';
-import ErrorBoundary from './ErrorBoundary';
 
 interface Expense {
   id: string;
@@ -435,7 +434,7 @@ export function ExpenseTracker() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'expenses_tracker.csv';
+    a.download = 'arthiq_expenses.csv';
     a.click();
   };
 
@@ -611,8 +610,8 @@ export function ExpenseTracker() {
               </div>
               <div className="brand-text">
                 <h1 className="header-title">
-                  <span className="title-main">Expense</span>
-                  <span className="title-accent">Tracker</span>
+                  <span className="title-main">Arthiq</span>
+                  <span className="title-accent"></span>
                   <span className="money-symbol">💳</span>
                 </h1>
                 <p className="header-subtitle">

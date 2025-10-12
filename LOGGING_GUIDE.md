@@ -1,4 +1,4 @@
-# 📋 Expense Tracker Logging System
+# 📋 Arthiq Logging System
 
 A comprehensive logging solution for both frontend and backend to track events, errors, and user actions for debugging and monitoring.
 

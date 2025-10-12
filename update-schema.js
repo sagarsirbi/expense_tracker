@@ -3,7 +3,7 @@ const path = require('path');
 
 function updateDatabaseSchema() {
   try {
-    const dbPath = path.join(__dirname, 'expense_tracker.db');
+    const dbPath = path.join(__dirname, 'arthiq.db');
     const db = new Database(dbPath);
     
     console.log('Updating database schema...');
