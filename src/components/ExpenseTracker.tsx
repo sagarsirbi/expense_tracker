@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Download, Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database } from 'lucide-react';
+import { Download, Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
@@ -20,6 +20,16 @@ export function ExpenseTracker() {
   const [categories, setCategories] = useState(['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others']);
   const [budgets, setBudgets] = useState<{[key: string]: number}>({});
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  
+  // Toast/Snackbar state for insights
+  const [toasts, setToasts] = useState<Array<{
+    id: string;
+    type: 'success' | 'warning' | 'caution' | 'info';
+    title: string;
+    message: string;
+    suggestion: string;
+  }>>([]);
+  const [showInsightsToast, setShowInsightsToast] = useState(false);
   
   // Monthly tracking state
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -363,7 +373,7 @@ export function ExpenseTracker() {
       const topCategoryPercentage = (topCategory.total / totalExpenses * 100);
       
       insights.push({
-        type: 'info',
+        type: 'category',
         title: 'Top Spending Category',
         message: `${topCategory.category} accounts for ${topCategoryPercentage.toFixed(0)}% of your monthly expenses.`,
         suggestion: topCategoryPercentage > 40 ? 'Consider if this category has room for optimization.' : 'Your spending is well distributed across categories.'
@@ -390,6 +400,46 @@ export function ExpenseTracker() {
     }
 
     return insights;
+  };
+
+  // Toast management functions
+  const addToast = (insight: any) => {
+    const toastId = Date.now().toString();
+    const newToast = { ...insight, id: toastId };
+    setToasts(prev => [...prev, newToast]);
+    
+    // Auto-remove toast after 8 seconds
+    setTimeout(() => {
+      removeToast(toastId);
+    }, 8000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
+  const showInsights = () => {
+    const insights = getMonthlyInsights();
+    if (insights.length === 0) {
+      // Show a default message if no insights are available
+      addToast({
+        type: 'info',
+        title: 'No Insights Available',
+        message: 'Add more expenses to get personalized insights and recommendations.',
+        suggestion: 'Start tracking your expenses to receive AI-powered financial insights!'
+      });
+      return;
+    }
+    
+    // Clear existing toasts first
+    setToasts([]);
+    
+    // Show insights with staggered timing for better UX
+    insights.forEach((insight, index) => {
+      setTimeout(() => {
+        addToast(insight);
+      }, index * 800); // Stagger the display of multiple insights
+    });
   };
 
   // Filter expenses for selected month/year
@@ -682,6 +732,8 @@ export function ExpenseTracker() {
               </div>
             </div>
 
+
+
             {/* Actions Section */}
             <div className="control-section actions-section">
               <div className="section-label">
@@ -728,10 +780,22 @@ export function ExpenseTracker() {
                   <Database size={14} />
                   <span className="btn-text">Database</span>
                 </Link>
+                {filteredExpenses.length > 0 && (
+                  <button
+                    onClick={showInsights}
+                    className="action-btn insights-btn"
+                    title="View monthly insights and suggestions"
+                  >
+                    <TrendingUp size={14} />
+                    <span className="btn-text">Insights</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
+
+
 
         {/* Summary Cards */}
         <div className="summary-cards">
@@ -880,36 +944,6 @@ export function ExpenseTracker() {
             </ResponsiveContainer>
           )}
         </div>
-
-        {/* Monthly Insights Section */}
-        {filteredExpenses.length > 0 && (
-          <div className="insights-section">
-            <div className="insights-header">
-              <h3>Monthly Insights & Recommendations</h3>
-              <p>AI-powered analysis of your spending patterns for {getMonthName(selectedMonth)} {selectedYear}</p>
-            </div>
-            
-            <div className="insights-grid">
-              {getMonthlyInsights().map((insight, index) => (
-                <div key={index} className={`insight-card ${insight.type}`}>
-                  <div className="insight-icon">
-                    {insight.type === 'success' && '✅'}
-                    {insight.type === 'warning' && '⚠️'}
-                    {insight.type === 'caution' && '⚡'}
-                    {insight.type === 'info' && '💡'}
-                  </div>
-                  <div className="insight-content">
-                    <h4>{insight.title}</h4>
-                    <p>{insight.message}</p>
-                    <div className="insight-suggestion">
-                      <strong>Suggestion:</strong> {insight.suggestion}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Main Layout */}
         <div className="main-layout">
@@ -1207,6 +1241,40 @@ export function ExpenseTracker() {
           </div>
         </div>
       )}
+
+      {/* Toast/Snackbar Container */}
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast toast-${toast.type}`}>
+            <div className="toast-header">
+              <div className="toast-icon">
+                {toast.type === 'success' && '✅'}
+                {toast.type === 'warning' && '⚡'}
+                {toast.type === 'caution' && '⚠️'}
+                {toast.type === 'info' && '💡'}
+                {toast.type === 'category' && '📊'}
+              </div>
+              <div className="toast-title">{toast.title}</div>
+              <button 
+                className="toast-close"
+                onClick={() => removeToast(toast.id)}
+                title="Close notification"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="toast-content">
+              <div className="toast-message">{toast.message}</div>
+              <div className="toast-suggestion">
+                <strong>💡 Suggestion:</strong> {toast.suggestion}
+              </div>
+            </div>
+            <div className="toast-progress">
+              <div className="toast-progress-bar"></div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
