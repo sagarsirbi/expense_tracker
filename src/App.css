@@ -236,22 +236,38 @@ body {
   50% { transform: translateY(-10px) rotate(180deg); opacity: 1; }
 }
 
+/* Custom Logo Styling */
+.custom-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+  animation: logoFloat 3s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+.custom-logo:hover {
+  transform: scale(1.1);
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(5deg); }
+}
+
 .brand-text {
   flex: 1;
 }
 
 .header-title {
-  font-family: var(--font-secondary);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: var(--text-5xl);
   font-weight: var(--font-extrabold);
   margin: 0 0 8px 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #000000;
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
 }
@@ -259,10 +275,8 @@ body {
 .title-main {
   letter-spacing: var(--tracking-tight);
   font-weight: var(--font-extrabold);
-  background: inherit;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #000000;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .title-accent {
@@ -464,6 +478,8 @@ body {
   
   .header-title {
     font-size: 24px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #000000;
   }
   
   .header-controls {

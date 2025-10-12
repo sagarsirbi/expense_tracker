@@ -601,23 +601,19 @@ export function ExpenseTracker() {
           <div className="header-left">
             <div className="header-brand">
               <div className="logo-container">
-                <div className="money-icon">💰</div>
-                <div className="coins-decoration">
-                  <span className="coin coin-1">🪙</span>
-                  <span className="coin coin-2">🪙</span>
-                  <span className="coin coin-3">🪙</span>
-                </div>
+                <img 
+                  src="public/arthiq_logo.png" 
+                  alt="Arthiq Logo" 
+                  className="custom-logo"
+                />
               </div>
               <div className="brand-text">
                 <h1 className="header-title">
                   <span className="title-main">Arthiq</span>
                   <span className="title-accent"></span>
-                  <span className="money-symbol">💳</span>
                 </h1>
                 <p className="header-subtitle">
-                  <span className="subtitle-icon">📊</span>
-                  Smart money management with multi-currency support
-                  <span className="growth-icon">📈</span>
+                Personal Financial Dashboard
                 </p>
               </div>
             </div>

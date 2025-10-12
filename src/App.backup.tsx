@@ -670,9 +670,7 @@ function App() {
                   <span className="money-symbol">💳</span>
                 </h1>
                 <p className="header-subtitle">
-                  <span className="subtitle-icon">📊</span>
-                  Smart money management with multi-currency support
-                  <span className="growth-icon">📈</span>
+                Personal Financial Dashboard
                 </p>
               </div>
             </div>
