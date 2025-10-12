@@ -38,6 +38,22 @@ export function ExpenseTracker() {
   // Currency state
   const [currency, setCurrency] = useState<'INR' | 'EUR'>('INR');
   const [exchangeRate, setExchangeRate] = useState<number>(1); // INR to EUR rate
+  
+  // Live currency data state
+  const [liveExchangeRate, setLiveExchangeRate] = useState<{
+    rate: number;
+    lastUpdated: string;
+    isLoading: boolean;
+    error: string | null;
+  }>({
+    rate: 102.72,
+    lastUpdated: new Date().toISOString(),
+    isLoading: false,
+    error: null
+  });
+
+  // Current date/time state
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   // Currency conversion functions
   const getCurrencySymbol = (curr: 'INR' | 'EUR') => {
@@ -82,6 +98,32 @@ export function ExpenseTracker() {
     }
   };
 
+  // Fetch live exchange rate for display
+  const fetchLiveExchangeRate = async () => {
+    setLiveExchangeRate(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      // Using exchangerate-api for live rates (EUR to INR)
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+      const data = await response.json();
+      const eurToInrRate = data.rates.INR;
+      
+      setLiveExchangeRate({
+        rate: eurToInrRate,
+        lastUpdated: new Date().toISOString(),
+        isLoading: false,
+        error: null
+      });
+    } catch (error) {
+      console.error('Failed to fetch live exchange rate:', error);
+      setLiveExchangeRate(prev => ({
+        ...prev,
+        isLoading: false,
+        error: 'Failed to fetch live rates'
+      }));
+    }
+  };
+
   const toggleCurrency = () => {
     setCurrency(prev => prev === 'INR' ? 'EUR' : 'INR');
   };
@@ -90,7 +132,21 @@ export function ExpenseTracker() {
   useEffect(() => {
     componentLogger.logMount({ currency, isElectronApp: isElectronApp() });
     fetchExchangeRate();
+    fetchLiveExchangeRate();
     initializeDatabase();
+    
+    // Set up periodic updates for live exchange rate (every 5 minutes)
+    const exchangeInterval = setInterval(fetchLiveExchangeRate, 5 * 60 * 1000);
+    
+    // Set up time updates (every second)
+    const timeInterval = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    
+    return () => {
+      clearInterval(exchangeInterval);
+      clearInterval(timeInterval);
+    };
   }, []);
 
   // Initialize database and load data
@@ -648,7 +704,25 @@ export function ExpenseTracker() {
       <div className="container">
         {/* Enhanced Header */}
         <div className="header">
-          <div className="header-left">
+          {/* Top Left Corner - Date/Time and Logo/Text */}
+          <div className="header-top-left">
+            {/* Current Date and Time */}
+            <div className="datetime-display">
+              <span className="datetime-text">
+                {currentDateTime.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })} | {currentDateTime.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true
+                })}
+              </span>
+            </div>
+            
+            {/* Logo and Brand */}
             <div className="header-brand">
               <div className="logo-container">
                 <img 
@@ -732,6 +806,47 @@ export function ExpenseTracker() {
               </div>
             </div>
 
+            {/* Live Exchange Rate Section */}
+            <div className="control-section exchange-rate-section">
+              <div className="section-label">
+                <span className="currency-icon">📈</span>
+                Live Rates
+              </div>
+              <div className="exchange-rate-display">
+                <div className="rate-container">
+                  <div className="rate-header">
+                    <span className="rate-pair">1 Euro equals</span>
+                    {liveExchangeRate.isLoading && <span className="loading-indicator">⟳</span>}
+                  </div>
+                  <div className="rate-value">
+                    {liveExchangeRate.isLoading ? (
+                      <span className="loading-text">Loading...</span>
+                    ) : liveExchangeRate.error ? (
+                      <span className="error-text">Error</span>
+                    ) : (
+                      <span className="rate-number">{liveExchangeRate.rate.toFixed(2)} Indian Rupee</span>
+                    )}
+                  </div>
+                  <div className="rate-footer">
+                    <span className="rate-timestamp">
+                      {new Date(liveExchangeRate.lastUpdated).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })} UTC
+                    </span>
+                    <button 
+                      onClick={fetchLiveExchangeRate}
+                      className="refresh-btn"
+                      title="Refresh rates"
+                      disabled={liveExchangeRate.isLoading}
+                    >
+                      🔄
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
 
 
             {/* Actions Section */}
