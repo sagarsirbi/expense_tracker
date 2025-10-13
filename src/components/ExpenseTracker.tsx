@@ -436,25 +436,6 @@ export function ExpenseTracker() {
       });
     }
 
-    // Monthly comparison insights
-    if (monthChange !== 0) {
-      if (monthChange > 20) {
-        insights.push({
-          type: 'warning',
-          title: 'Significant Spending Increase',
-          message: `Your spending increased by ${monthChange.toFixed(1)}% compared to last month.`,
-          suggestion: 'Review your recent expenses to identify what caused this increase.'
-        });
-      } else if (monthChange < -20) {
-        insights.push({
-          type: 'success',
-          title: 'Great Savings!',
-          message: `You reduced your spending by ${Math.abs(monthChange).toFixed(1)}% compared to last month.`,
-          suggestion: 'Keep up the excellent financial discipline!'
-        });
-      }
-    }
-
     return insights;
   };
 
