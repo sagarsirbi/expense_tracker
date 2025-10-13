@@ -330,12 +330,14 @@ body {
 }
 
 .header-controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 24px;
   flex-wrap: wrap;
-  flex: 1;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.5);
+  margin-top: 16px;
 }
 
 
@@ -580,6 +582,8 @@ body {
   }
 }
 
+/* Removed individual container styling - controls are now flat */
+/*
 .control-section {
   display: flex;
   flex-direction: column;
@@ -596,6 +600,32 @@ body {
   background: rgba(248, 250, 252, 0.9);
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+*/
+
+/* Flat control styles */
+.month-navigator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.currency-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exchange-rate-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .section-label {
@@ -759,12 +789,16 @@ body {
   }
   
   .header-controls {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
   }
   
-  .control-section {
-    padding: 8px;
+  .month-navigator,
+  .currency-toggle,
+  .exchange-rate-display,
+  .action-buttons {
+    justify-content: center;
   }
   
   .action-buttons {
@@ -2267,13 +2301,9 @@ body {
   }
   
   .header-controls {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     min-width: auto;
     gap: 16px;
-  }
-  
-  .control-section {
-    padding: 16px;
   }
 }
 

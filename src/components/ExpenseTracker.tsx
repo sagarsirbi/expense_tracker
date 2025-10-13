@@ -741,169 +741,147 @@ export function ExpenseTracker() {
             </div>
           </div>
           
-          {/* Organized Header Controls */}
+          {/* Flat Header Controls */}
           <div className="header-controls">
-            {/* Month Navigation Section */}
-            <div className="control-section month-section">
-              <div className="section-label">
-                <Calendar size={14} />
-                Period
-              </div>
-              <div className="month-navigator">
+            {/* Month Navigation */}
+            <div className="month-navigator">
+              <Calendar size={14} />
+              <button 
+                onClick={() => navigateMonth('prev')}
+                className="month-nav-btn"
+                title="Previous month"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="current-month">
+                <h3 className="month-display">
+                  {getMonthName(selectedMonth)} {selectedYear}
+                </h3>
                 <button 
-                  onClick={() => navigateMonth('prev')}
-                  className="month-nav-btn"
-                  title="Previous month"
+                  onClick={goToCurrentMonth}
+                  className="current-month-btn"
+                  title="Go to current month"
                 >
-                  <ChevronLeft size={16} />
+                  Today
                 </button>
-                <div className="current-month">
-                  <h3 className="month-display">
-                    {getMonthName(selectedMonth)} {selectedYear}
-                  </h3>
+              </div>
+              <button 
+                onClick={() => navigateMonth('next')}
+                className="month-nav-btn"
+                title="Next month"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Currency Toggle */}
+            <div className="currency-toggle">
+              <span className="currency-icon">💱</span>
+              <button 
+                onClick={toggleCurrency}
+                className="currency-toggle-btn"
+                title={`Switch to ${currency === 'INR' ? 'EUR' : 'INR'}`}
+              >
+                <div className="currency-option">
+                  <span className="flag">{currency === 'INR' ? '🇮🇳' : '🇪🇺'}</span>
+                  <span className="currency-code">{currency}</span>
+                </div>
+                <div className="toggle-arrow">⇄</div>
+                <div className="currency-option inactive">
+                  <span className="flag">{currency === 'INR' ? '🇪🇺' : '🇮🇳'}</span>
+                  <span className="currency-code">{currency === 'INR' ? 'EUR' : 'INR'}</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Live Exchange Rate */}
+            <div className="exchange-rate-display">
+              <span className="currency-icon">📈</span>
+              <div className="rate-container">
+                <div className="rate-header">
+                  <span className="rate-pair">1 Euro equals</span>
+                  {liveExchangeRate.isLoading && <span className="loading-indicator">⟳</span>}
+                </div>
+                <div className="rate-value">
+                  {liveExchangeRate.isLoading ? (
+                    <span className="loading-text">Loading...</span>
+                  ) : liveExchangeRate.error ? (
+                    <span className="error-text">Error</span>
+                  ) : (
+                    <span className="rate-number">{liveExchangeRate.rate.toFixed(2)} Indian Rupee</span>
+                  )}
+                </div>
+                <div className="rate-footer">
+                  <span className="rate-timestamp">
+                    {new Date(liveExchangeRate.lastUpdated).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })} UTC
+                  </span>
                   <button 
-                    onClick={goToCurrentMonth}
-                    className="current-month-btn"
-                    title="Go to current month"
+                    onClick={fetchLiveExchangeRate}
+                    className="refresh-btn"
+                    title="Refresh rates"
+                    disabled={liveExchangeRate.isLoading}
                   >
-                    Today
+                    🔄
                   </button>
                 </div>
-                <button 
-                  onClick={() => navigateMonth('next')}
-                  className="month-nav-btn"
-                  title="Next month"
-                >
-                  <ChevronRight size={16} />
-                </button>
               </div>
             </div>
 
-            {/* Currency Section */}
-            <div className="control-section currency-section">
-              <div className="section-label">
-                <span className="currency-icon">💱</span>
-                Currency
-              </div>
-              <div className="currency-toggle">
-                <button 
-                  onClick={toggleCurrency}
-                  className="currency-toggle-btn"
-                  title={`Switch to ${currency === 'INR' ? 'EUR' : 'INR'}`}
-                >
-                  <div className="currency-option">
-                    <span className="flag">{currency === 'INR' ? '🇮🇳' : '🇪🇺'}</span>
-                    <span className="currency-code">{currency}</span>
-                  </div>
-                  <div className="toggle-arrow">⇄</div>
-                  <div className="currency-option inactive">
-                    <span className="flag">{currency === 'INR' ? '🇪🇺' : '🇮🇳'}</span>
-                    <span className="currency-code">{currency === 'INR' ? 'EUR' : 'INR'}</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Live Exchange Rate Section */}
-            <div className="control-section exchange-rate-section">
-              <div className="section-label">
-                <span className="currency-icon">📈</span>
-                Live Rates
-              </div>
-              <div className="exchange-rate-display">
-                <div className="rate-container">
-                  <div className="rate-header">
-                    <span className="rate-pair">1 Euro equals</span>
-                    {liveExchangeRate.isLoading && <span className="loading-indicator">⟳</span>}
-                  </div>
-                  <div className="rate-value">
-                    {liveExchangeRate.isLoading ? (
-                      <span className="loading-text">Loading...</span>
-                    ) : liveExchangeRate.error ? (
-                      <span className="error-text">Error</span>
-                    ) : (
-                      <span className="rate-number">{liveExchangeRate.rate.toFixed(2)} Indian Rupee</span>
-                    )}
-                  </div>
-                  <div className="rate-footer">
-                    <span className="rate-timestamp">
-                      {new Date(liveExchangeRate.lastUpdated).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      })} UTC
-                    </span>
-                    <button 
-                      onClick={fetchLiveExchangeRate}
-                      className="refresh-btn"
-                      title="Refresh rates"
-                      disabled={liveExchangeRate.isLoading}
-                    >
-                      🔄
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-
-            {/* Actions Section */}
-            <div className="control-section actions-section">
-              <div className="section-label">
-                <span className="actions-icon">⚡</span>
-                Actions
-              </div>
-              <div className="action-buttons">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={importFromCSV}
-                  style={{display: 'none'}}
-                  id="csv-import"
-                />
-                <label
-                  htmlFor="csv-import"
-                  className="action-btn import-btn"
-                  title="Import expenses from CSV"
-                >
-                  <Download size={14} style={{transform: 'rotate(180deg)'}} />
-                  <span className="btn-text">Import</span>
-                </label>
+            {/* Action Buttons */}
+            <div className="action-buttons">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={importFromCSV}
+                style={{display: 'none'}}
+                id="csv-import"
+              />
+              <label
+                htmlFor="csv-import"
+                className="action-btn import-btn"
+                title="Import expenses from CSV"
+              >
+                <Download size={14} style={{transform: 'rotate(180deg)'}} />
+                <span className="btn-text">Import</span>
+              </label>
+              <button
+                onClick={exportToCSV}
+                className="action-btn export-btn"
+                title="Export expenses to CSV"
+              >
+                <Download size={14} />
+                <span className="btn-text">Export</span>
+              </button>
+              <button
+                onClick={() => setShowBudgetModal(true)}
+                className="action-btn budget-btn"
+                title="Set category budgets"
+              >
+                <DollarSign size={14} />
+                <span className="btn-text">Budget</span>
+              </button>
+              <Link
+                to={`/${getMonthName(selectedMonth).toLowerCase()}/database`}
+                className="action-btn database-btn"
+                title="View database for current month"
+              >
+                <Database size={14} />
+                <span className="btn-text">Database</span>
+              </Link>
+              {filteredExpenses.length > 0 && (
                 <button
-                  onClick={exportToCSV}
-                  className="action-btn export-btn"
-                  title="Export expenses to CSV"
+                  onClick={showInsights}
+                  className="action-btn insights-btn"
+                  title="View monthly insights and suggestions"
                 >
-                  <Download size={14} />
-                  <span className="btn-text">Export</span>
+                  <TrendingUp size={14} />
+                  <span className="btn-text">Insights</span>
                 </button>
-                <button
-                  onClick={() => setShowBudgetModal(true)}
-                  className="action-btn budget-btn"
-                  title="Set category budgets"
-                >
-                  <DollarSign size={14} />
-                  <span className="btn-text">Budget</span>
-                </button>
-                <Link
-                  to={`/${getMonthName(selectedMonth).toLowerCase()}/database`}
-                  className="action-btn database-btn"
-                  title="View database for current month"
-                >
-                  <Database size={14} />
-                  <span className="btn-text">Database</span>
-                </Link>
-                {filteredExpenses.length > 0 && (
-                  <button
-                    onClick={showInsights}
-                    className="action-btn insights-btn"
-                    title="View monthly insights and suggestions"
-                  >
-                    <TrendingUp size={14} />
-                    <span className="btn-text">Insights</span>
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>
