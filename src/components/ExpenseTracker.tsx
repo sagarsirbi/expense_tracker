@@ -61,6 +61,7 @@ export function ExpenseTracker() {
 
   // Salary and savings state
   const [monthlySalary, setMonthlySalary] = useState<number>(0);
+  const [salaryCurrency, setSalaryCurrency] = useState<'INR' | 'EUR'>('INR');
   const [showSalaryModal, setShowSalaryModal] = useState(false);
   const [salaryHistory, setSalaryHistory] = useState<{[key: string]: number}>({});
 
@@ -872,6 +873,24 @@ export function ExpenseTracker() {
               <DollarSign size={32} className="summary-card-icon" />
             </div>
           )}
+
+          {monthlySalary > 0 && (
+            <div className="summary-card savings">
+              <div className="summary-card-content">
+                <h3>Monthly Savings</h3>
+                <p>{formatCurrency(monthlySalary - totalExpenses)}</p>
+                <div className="savings-status">
+                  <span className={`savings-indicator ${monthlySalary > totalExpenses ? 'positive' : 'negative'}`}>
+                    {monthlySalary > totalExpenses ? 
+                      `${(((monthlySalary - totalExpenses) / monthlySalary) * 100).toFixed(0)}% saved` :
+                      `${((totalExpenses - monthlySalary) / monthlySalary * 100).toFixed(0)}% overspent`
+                    }
+                  </span>
+                </div>
+              </div>
+              <TrendingUp size={32} className="summary-card-icon" />
+            </div>
+          )}
         </div>
 
         {/* Enhanced Chart Section */}
@@ -1288,17 +1307,36 @@ export function ExpenseTracker() {
             <div className="salary-input-container">
               <div className="salary-input-group">
                 <label className="salary-label">
-                  Monthly Salary ({currency})
+                  Monthly Salary
                 </label>
                 <input
                   type="number"
-                  placeholder="Enter your monthly salary"
+                  placeholder={`Enter your monthly salary in ${salaryCurrency}`}
                   defaultValue={monthlySalary || ''}
                   className="salary-input"
                   id="salary-input"
                   min="0"
                   step="0.01"
                 />
+              </div>
+              
+              <div className="salary-toggle-container">
+                <div className="salary-toggle-black">
+                  <button
+                    className={`salary-toggle-btn${salaryCurrency === 'INR' ? ' active' : ''}`}
+                    onClick={() => setSalaryCurrency('INR')}
+                    type="button"
+                  >
+                    INR
+                  </button>
+                  <button
+                    className={`salary-toggle-btn${salaryCurrency === 'EUR' ? ' active' : ''}`}
+                    onClick={() => setSalaryCurrency('EUR')}
+                    type="button"
+                  >
+                    EUR
+                  </button>
+                </div>
               </div>
               
               <div className="salary-info">
