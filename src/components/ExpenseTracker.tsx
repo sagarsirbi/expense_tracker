@@ -702,6 +702,19 @@ export function ExpenseTracker() {
                 <p className="header-subtitle">
                 Personal Financial Dashboard
                 </p>
+                
+                {/* Compact Exchange Rate Display */}
+                <div className="compact-rate-display">
+                  <span className="rate-text">
+                    {liveExchangeRate.isLoading ? (
+                      "Loading..."
+                    ) : liveExchangeRate.error ? (
+                      "Error"
+                    ) : (
+                      `1 Euro = ${liveExchangeRate.rate.toFixed(2)} INR`
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -710,7 +723,6 @@ export function ExpenseTracker() {
           <div className="header-controls">
             {/* Month Navigation */}
             <div className="month-navigator">
-              <Calendar size={14} />
               <button 
                 onClick={() => navigateMonth('prev')}
                 className="month-nav-btn"
@@ -757,43 +769,6 @@ export function ExpenseTracker() {
                   <span className="currency-code">{currency === 'INR' ? 'EUR' : 'INR'}</span>
                 </div>
               </button>
-            </div>
-
-            {/* Live Exchange Rate */}
-            <div className="exchange-rate-display">
-              <span className="currency-icon">📈</span>
-              <div className="rate-container">
-                <div className="rate-header">
-                  <span className="rate-pair">1 Euro equals</span>
-                  {liveExchangeRate.isLoading && <span className="loading-indicator">⟳</span>}
-                </div>
-                <div className="rate-value">
-                  {liveExchangeRate.isLoading ? (
-                    <span className="loading-text">Loading...</span>
-                  ) : liveExchangeRate.error ? (
-                    <span className="error-text">Error</span>
-                  ) : (
-                    <span className="rate-number">{liveExchangeRate.rate.toFixed(2)} Indian Rupee</span>
-                  )}
-                </div>
-                <div className="rate-footer">
-                  <span className="rate-timestamp">
-                    {new Date(liveExchangeRate.lastUpdated).toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })} UTC
-                  </span>
-                  <button 
-                    onClick={fetchLiveExchangeRate}
-                    className="refresh-btn"
-                    title="Refresh rates"
-                    disabled={liveExchangeRate.isLoading}
-                  >
-                    🔄
-                  </button>
-                </div>
-              </div>
             </div>
 
             {/* Action Buttons */}

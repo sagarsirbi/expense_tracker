@@ -325,6 +325,24 @@ body {
   letter-spacing: var(--tracking-normal);
 }
 
+/* Compact Rate Display */
+.compact-rate-display {
+  margin-top: 6px;
+}
+
+.rate-text {
+  font-family: var(--font-primary);
+  color: #059669;
+  font-size: var(--text-xs);
+  font-weight: var(--font-normal);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-normal);
+}
+
 .subtitle-icon, .growth-icon {
   font-size: var(--text-sm);
 }
@@ -334,7 +352,7 @@ body {
   align-items: center;
   gap: 24px;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: center;
   padding: 16px 0;
   border-top: 1px solid rgba(226, 232, 240, 0.5);
   margin-top: 16px;
@@ -734,7 +752,9 @@ body {
 .month-navigator {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 16px;
+  flex: 1;
 }
 
 .currency-toggle {
@@ -927,27 +947,28 @@ body {
 }
 
 .month-navigator {
-  gap: 8px;
+  gap: 16px;
 }
 
 .month-nav-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
   color: white;
   border: none;
-  width: 32px;
-  height: 35px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .month-nav-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, #333333 0%, #555555 100%);
 }
 
 .current-month {
