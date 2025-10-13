@@ -55,6 +55,15 @@ export function ExpenseTracker() {
   // Current date/time state
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
+  // Chart filtering state
+  const [chartTimeFilter, setChartTimeFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [chartCategoryFilter, setChartCategoryFilter] = useState<string>('all');
+
+  // Salary and savings state
+  const [monthlySalary, setMonthlySalary] = useState<number>(0);
+  const [showSalaryModal, setShowSalaryModal] = useState(false);
+  const [salaryHistory, setSalaryHistory] = useState<{[key: string]: number}>({});
+
   // Currency conversion functions
   const getCurrencySymbol = (curr: 'INR' | 'EUR') => {
     return curr === 'INR' ? '₹' : '€';
@@ -494,23 +503,83 @@ export function ExpenseTracker() {
       .reduce((sum, exp) => sum + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR'), 0)
   })).filter(cat => cat.total > 0);
 
-  // Prepare data for line chart - daily expenses for selected month
-  const dailyExpenses = filteredExpenses.reduce((acc: {[key: string]: number}, exp) => {
-    const date = exp.date;
-    if (!acc[date]) {
-      acc[date] = 0;
-    }
-    acc[date] += convertAmount(parseFloat(exp.amount), exp.currency || 'INR');
-    return acc;
-  }, {});
+  // Enhanced chart data preparation with filtering
+  const getChartData = () => {
+    // Filter by category if not 'all'
+    let dataToProcess = chartCategoryFilter === 'all' 
+      ? filteredExpenses 
+      : filteredExpenses.filter(exp => exp.category === chartCategoryFilter);
 
-  const chartData = Object.keys(dailyExpenses)
-    .sort()
-    .map(date => ({
-      date: new Date(date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
-      fullDate: date,
-      amount: dailyExpenses[date]
-    }));
+    if (chartTimeFilter === 'daily') {
+      // Daily data (existing logic)
+      const dailyExpenses = dataToProcess.reduce((acc: {[key: string]: number}, exp) => {
+        const date = exp.date;
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += convertAmount(parseFloat(exp.amount), exp.currency || 'INR');
+        return acc;
+      }, {});
+
+      return Object.keys(dailyExpenses)
+        .sort()
+        .map(date => ({
+          date: new Date(date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+          fullDate: date,
+          amount: dailyExpenses[date]
+        }));
+    }
+
+    if (chartTimeFilter === 'weekly') {
+      // Weekly data
+      const weeklyExpenses = dataToProcess.reduce((acc: {[key: string]: number}, exp) => {
+        const date = new Date(exp.date);
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        const weekKey = weekStart.toISOString().split('T')[0];
+        
+        if (!acc[weekKey]) {
+          acc[weekKey] = 0;
+        }
+        acc[weekKey] += convertAmount(parseFloat(exp.amount), exp.currency || 'INR');
+        return acc;
+      }, {});
+
+      return Object.keys(weeklyExpenses)
+        .sort()
+        .map(weekStart => ({
+          date: `Week of ${new Date(weekStart).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`,
+          fullDate: weekStart,
+          amount: weeklyExpenses[weekStart]
+        }));
+    }
+
+    if (chartTimeFilter === 'monthly') {
+      // Monthly data (last 12 months)
+      const monthlyExpenses = dataToProcess.reduce((acc: {[key: string]: number}, exp) => {
+        const date = new Date(exp.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!acc[monthKey]) {
+          acc[monthKey] = 0;
+        }
+        acc[monthKey] += convertAmount(parseFloat(exp.amount), exp.currency || 'INR');
+        return acc;
+      }, {});
+
+      return Object.keys(monthlyExpenses)
+        .sort()
+        .map(monthKey => ({
+          date: new Date(monthKey + '-01').toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
+          fullDate: monthKey + '-01',
+          amount: monthlyExpenses[monthKey]
+        }));
+    }
+
+    return [];
+  };
+
+  const chartData = getChartData();
 
   const maxCategory = categoryTotals.length > 0 
     ? categoryTotals.reduce((max, cat) => cat.total > max.total ? cat : max, categoryTotals[0])
@@ -735,24 +804,76 @@ export function ExpenseTracker() {
           )}
         </div>
 
-        {/* Chart Section */}
+        {/* Enhanced Chart Section */}
         <div className="chart-section">
           <div className="chart-header">
             <TrendingUp className="text-purple-500" size={20} />
-            <h2 className="chart-title">Daily Expenses - {getMonthName(selectedMonth)} {selectedYear}</h2>
+            <h2 className="chart-title">
+              {chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)} Expenses
+              {chartCategoryFilter !== 'all' && ` - ${chartCategoryFilter}`}
+              {chartTimeFilter === 'daily' && ` - ${getMonthName(selectedMonth)} ${selectedYear}`}
+            </h2>
           </div>
+          
+          {/* Chart Controls */}
+          <div className="chart-controls">
+            <div className="chart-filter-group">
+              <label className="filter-label">Time Period:</label>
+              <div className="filter-buttons">
+                <button 
+                  className={`filter-btn ${chartTimeFilter === 'daily' ? 'active' : ''}`}
+                  onClick={() => setChartTimeFilter('daily')}
+                >
+                  Daily
+                </button>
+                <button 
+                  className={`filter-btn ${chartTimeFilter === 'weekly' ? 'active' : ''}`}
+                  onClick={() => setChartTimeFilter('weekly')}
+                >
+                  Weekly
+                </button>
+                <button 
+                  className={`filter-btn ${chartTimeFilter === 'monthly' ? 'active' : ''}`}
+                  onClick={() => setChartTimeFilter('monthly')}
+                >
+                  Monthly
+                </button>
+              </div>
+            </div>
+            
+            <div className="chart-filter-group">
+              <label className="filter-label">Category:</label>
+              <select 
+                className="category-filter-select"
+                value={chartCategoryFilter}
+                onChange={(e) => setChartCategoryFilter(e.target.value)}
+              >
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {chartData.length === 0 ? (
             <div className="chart-placeholder">
-              Add expenses for {getMonthName(selectedMonth)} {selectedYear} to see the graph
+              {chartCategoryFilter === 'all' 
+                ? `Add expenses to see the ${chartTimeFilter} graph`
+                : `No expenses found for ${chartCategoryFilter} category`
+              }
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={350}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis 
                   dataKey="date" 
                   stroke="#666"
                   style={{ fontSize: '12px' }}
+                  angle={chartTimeFilter === 'monthly' ? -45 : 0}
+                  textAnchor={chartTimeFilter === 'monthly' ? 'end' : 'middle'}
+                  height={chartTimeFilter === 'monthly' ? 60 : 30}
                 />
                 <YAxis 
                   stroke="#666"
@@ -760,16 +881,23 @@ export function ExpenseTracker() {
                   label={{ value: `Amount (${getCurrencySymbol(currency)})`, angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  contentStyle={{ 
+                    backgroundColor: '#fff', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                  }}
                   formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
+                  labelFormatter={(label) => `${chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)}: ${label}`}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="amount" 
                   stroke="#8b5cf6" 
-                  strokeWidth={2}
-                  dot={{ fill: '#8b5cf6', r: 4 }}
-                  activeDot={{ r: 6 }}
+                  strokeWidth={3}
+                  dot={{ fill: '#8b5cf6', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 7, stroke: '#8b5cf6', strokeWidth: 2, fill: '#fff' }}
+                  strokeDasharray={chartCategoryFilter !== 'all' ? '5,5' : '0'}
                 />
               </LineChart>
             </ResponsiveContainer>
