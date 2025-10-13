@@ -137,10 +137,6 @@ export function ExpenseTracker() {
     }
   };
 
-  const toggleCurrency = () => {
-    setCurrency(prev => prev === 'INR' ? 'EUR' : 'INR');
-  };
-
   // Fetch exchange rate on component mount and initialize database
   useEffect(() => {
     componentLogger.logMount({ currency, isElectronApp: isElectronApp() });
@@ -753,22 +749,22 @@ export function ExpenseTracker() {
 
             {/* Currency Toggle */}
             <div className="currency-toggle">
-              <span className="currency-icon">💱</span>
-              <button 
-                onClick={toggleCurrency}
-                className="currency-toggle-btn"
-                title={`Switch to ${currency === 'INR' ? 'EUR' : 'INR'}`}
-              >
-                <div className="currency-option">
-                  <span className="flag">{currency === 'INR' ? '🇮🇳' : '🇪🇺'}</span>
-                  <span className="currency-code">{currency}</span>
-                </div>
-                <div className="toggle-arrow">⇄</div>
-                <div className="currency-option inactive">
-                  <span className="flag">{currency === 'INR' ? '🇪🇺' : '🇮🇳'}</span>
-                  <span className="currency-code">{currency === 'INR' ? 'EUR' : 'INR'}</span>
-                </div>
-              </button>
+              <div className="currency-toggle-black">
+                <button
+                  className={`currency-toggle-btn${currency === 'INR' ? ' active' : ''}`}
+                  onClick={() => setCurrency('INR')}
+                  type="button"
+                >
+                  IN
+                </button>
+                <button
+                  className={`currency-toggle-btn${currency === 'EUR' ? ' active' : ''}`}
+                  onClick={() => setCurrency('EUR')}
+                  type="button"
+                >
+                  EU
+                </button>
+              </div>
             </div>
 
             {/* Action Buttons */}
