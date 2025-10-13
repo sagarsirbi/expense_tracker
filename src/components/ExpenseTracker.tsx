@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Download, Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database, X } from 'lucide-react';
+import { Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
@@ -531,158 +531,6 @@ export function ExpenseTracker() {
       amount: dailyExpenses[date]
     }));
 
-  const exportToCSV = () => {
-    const headers = ['Date', 'Category', 'Description', 'Amount'];
-    const rows = expenses.map(exp => [exp.date, exp.category, exp.description, exp.amount]);
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'arthiq_expenses.csv';
-    a.click();
-  };
-
-  const importFromCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const csv = e.target?.result as string;
-      const lines = csv.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      
-      // Find column indices
-      const dateIndex = headers.findIndex(h => h.includes('date'));
-      const categoryIndex = headers.findIndex(h => h.includes('category'));
-      const descriptionIndex = headers.findIndex(h => h.includes('description') || h.includes('desc'));
-      const amountIndex = headers.findIndex(h => h.includes('amount') || h.includes('price') || h.includes('cost'));
-
-      if (dateIndex === -1 || amountIndex === -1) {
-        alert('CSV must contain Date and Amount columns');
-        return;
-      }
-
-      const importedExpenses: any[] = [];
-      const newCategories = new Set(categories);
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-        
-        if (values.length < Math.max(dateIndex, amountIndex) + 1) continue;
-
-        const date = values[dateIndex];
-        const amount = values[amountIndex];
-        const description = descriptionIndex >= 0 ? values[descriptionIndex] : `Imported expense ${i}`;
-        let category = categoryIndex >= 0 ? values[categoryIndex] : 'Others';
-
-        // Auto-categorize if category is empty or not provided
-        if (!category || category === '' || category === 'undefined') {
-          category = autoCategorizeExpense(description, amount);
-        }
-
-        // Add new category if it doesn't exist
-        if (category && !categories.includes(category)) {
-          newCategories.add(category);
-        }
-
-        // Validate and parse date
-        const parsedDate = new Date(date);
-        const formattedDate = isNaN(parsedDate.getTime()) ? 
-          new Date().toISOString().split('T')[0] : 
-          parsedDate.toISOString().split('T')[0];
-
-        // Validate amount
-        const parsedAmount = parseFloat(amount.replace(/[^0-9.-]/g, ''));
-        if (isNaN(parsedAmount)) continue;
-
-        importedExpenses.push({
-          id: Date.now() + i,
-          date: formattedDate,
-          category: category || 'Others',
-          description: description || `Imported expense ${i}`,
-          amount: parsedAmount.toString()
-        });
-      }
-
-      // Update state
-      setCategories(Array.from(newCategories));
-      setExpenses([...expenses, ...importedExpenses]);
-      
-      // Show success message
-      alert(`Successfully imported ${importedExpenses.length} expenses!`);
-    };
-
-    reader.readAsText(file);
-    // Reset file input
-    event.target.value = '';
-  };
-
-  const autoCategorizeExpense = (description: string, amount: string) => {
-    const desc = description.toLowerCase();
-    const amt = parseFloat(amount.replace(/[^0-9.-]/g, ''));
-
-    // Food keywords
-    if (desc.includes('restaurant') || desc.includes('food') || desc.includes('cafe') || 
-        desc.includes('coffee') || desc.includes('lunch') || desc.includes('dinner') || 
-        desc.includes('breakfast') || desc.includes('pizza') || desc.includes('burger') ||
-        desc.includes('grocery') || desc.includes('supermarket') || desc.includes('bakery')) {
-      return 'Food';
-    }
-
-    // Transportation keywords
-    if (desc.includes('uber') || desc.includes('taxi') || desc.includes('bus') || 
-        desc.includes('train') || desc.includes('metro') || desc.includes('fuel') || 
-        desc.includes('gas') || desc.includes('petrol') || desc.includes('parking') ||
-        desc.includes('transport') || desc.includes('flight') || desc.includes('airline')) {
-      return 'Transportation';
-    }
-
-    // Shopping keywords
-    if (desc.includes('amazon') || desc.includes('shop') || desc.includes('store') || 
-        desc.includes('mall') || desc.includes('purchase') || desc.includes('buy') ||
-        desc.includes('clothing') || desc.includes('shoes') || desc.includes('electronics')) {
-      return 'Shopping';
-    }
-
-    // Entertainment keywords
-    if (desc.includes('movie') || desc.includes('cinema') || desc.includes('theatre') || 
-        desc.includes('concert') || desc.includes('game') || desc.includes('netflix') || 
-        desc.includes('spotify') || desc.includes('entertainment') || desc.includes('club') ||
-        desc.includes('bar') || desc.includes('pub')) {
-      return 'Entertainment';
-    }
-
-    // Bills & Utilities keywords
-    if (desc.includes('electricity') || desc.includes('water') || desc.includes('internet') || 
-        desc.includes('phone') || desc.includes('rent') || desc.includes('mortgage') || 
-        desc.includes('insurance') || desc.includes('utility') || desc.includes('bill') ||
-        desc.includes('subscription') || amt > 1000) {
-      return 'Bills & Utilities';
-    }
-
-    // Healthcare keywords
-    if (desc.includes('doctor') || desc.includes('hospital') || desc.includes('medical') || 
-        desc.includes('pharmacy') || desc.includes('medicine') || desc.includes('health') ||
-        desc.includes('clinic') || desc.includes('dentist')) {
-      return 'Healthcare';
-    }
-
-    // Education keywords
-    if (desc.includes('school') || desc.includes('university') || desc.includes('course') || 
-        desc.includes('book') || desc.includes('education') || desc.includes('tuition') ||
-        desc.includes('training') || desc.includes('certification')) {
-      return 'Education';
-    }
-
-    return 'Others';
-  };
-
   const maxCategory = categoryTotals.length > 0 
     ? categoryTotals.reduce((max, cat) => cat.total > max.total ? cat : max, categoryTotals[0])
     : null;
@@ -833,29 +681,6 @@ export function ExpenseTracker() {
 
             {/* Action Buttons */}
             <div className="action-buttons">
-              <input
-                type="file"
-                accept=".csv"
-                onChange={importFromCSV}
-                style={{display: 'none'}}
-                id="csv-import"
-              />
-              <label
-                htmlFor="csv-import"
-                className="action-btn import-btn"
-                title="Import expenses from CSV"
-              >
-                <Download size={14} style={{transform: 'rotate(180deg)'}} />
-                <span className="btn-text">Import</span>
-              </label>
-              <button
-                onClick={exportToCSV}
-                className="action-btn export-btn"
-                title="Export expenses to CSV"
-              >
-                <Download size={14} />
-                <span className="btn-text">Export</span>
-              </button>
               <button
                 onClick={() => setShowBudgetModal(true)}
                 className="action-btn budget-btn"
