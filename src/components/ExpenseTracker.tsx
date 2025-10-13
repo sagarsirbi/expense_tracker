@@ -829,7 +829,7 @@ export function ExpenseTracker() {
               <h3>Monthly Total</h3>
               <p>{formatCurrency(totalExpenses)}</p>
             </div>
-            <TrendingUp size={32} className="summary-card-icon" />
+            <TrendingUp size={24} className="summary-card-icon" />
           </div>
 
           <div className="summary-card pink">
@@ -837,7 +837,7 @@ export function ExpenseTracker() {
               <h3>Monthly Entries</h3>
               <p>{filteredExpenses.length}</p>
             </div>
-            <Calendar size={32} className="summary-card-icon" />
+            <Calendar size={24} className="summary-card-icon" />
           </div>
 
           <div className="summary-card blue">
@@ -848,7 +848,7 @@ export function ExpenseTracker() {
                 {maxCategory ? formatCurrency(maxCategory.total) : formatCurrency(0)}
               </span>
             </div>
-            <PieChart size={32} className="summary-card-icon" />
+            <PieChart size={24} className="summary-card-icon" />
           </div>
 
           <div className="summary-card green">
@@ -856,7 +856,7 @@ export function ExpenseTracker() {
               <h3>Daily Average</h3>
               <p>{filteredExpenses.length > 0 ? formatCurrency(totalExpenses / new Date(selectedYear, selectedMonth + 1, 0).getDate()) : formatCurrency(0)}</p>
             </div>
-            <Calendar size={32} className="summary-card-icon" />
+            <Calendar size={24} className="summary-card-icon" />
           </div>
 
           {Object.keys(budgets).length > 0 && (
@@ -870,7 +870,7 @@ export function ExpenseTracker() {
                   </span>
                 </div>
               </div>
-              <DollarSign size={32} className="summary-card-icon" />
+              <DollarSign size={24} className="summary-card-icon" />
             </div>
           )}
 
@@ -888,7 +888,7 @@ export function ExpenseTracker() {
                   </span>
                 </div>
               </div>
-              <TrendingUp size={32} className="summary-card-icon" />
+              <TrendingUp size={24} className="summary-card-icon" />
             </div>
           )}
         </div>

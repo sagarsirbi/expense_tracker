@@ -1179,25 +1179,27 @@ body {
 /* Summary Cards */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+  max-width: 100%;
 }
 
 .summary-card {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-radius: 24px;
-  padding: 32px;
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  min-height: 100px;
 }
 
 .summary-card::before {
@@ -1212,12 +1214,12 @@ body {
 }
 
 .summary-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 .summary-card:hover::before {
-  height: 8px;
+  height: 6px;
 }
 
 .summary-card.purple {
@@ -1257,8 +1259,8 @@ body {
 }
 
 .summary-card-content h3 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
+  margin: 0 0 6px 0;
+  font-size: 11px;
   font-weight: 600;
   color: #6b7280;
   text-transform: uppercase;
@@ -1266,8 +1268,8 @@ body {
 }
 
 .summary-card-content p {
-  margin: 0 0 8px 0;
-  font-size: 24px;
+  margin: 0 0 6px 0;
+  font-size: 18px;
   font-weight: 700;
   color: #1f2937;
 }
@@ -1275,6 +1277,8 @@ body {
 .summary-card-icon {
   color: #8b5cf6;
   opacity: 0.7;
+  width: 24px;
+  height: 24px;
 }
 
 /* Budget Status Indicator */
@@ -1734,11 +1738,37 @@ body {
   }
   
   .summary-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
   
   .form-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .summary-card {
+    padding: 16px;
+    min-height: 80px;
+  }
+  
+  .summary-card-content h3 {
+    font-size: 10px;
+  }
+  
+  .summary-card-content p {
+    font-size: 16px;
+  }
+  
+  .summary-card-icon {
+    width: 20px;
+    height: 20px;
   }
 }
 
