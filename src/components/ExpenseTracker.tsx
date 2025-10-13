@@ -795,57 +795,8 @@ export function ExpenseTracker() {
               </div>
             </div>
 
-            {/* Monthly Savings Display */}
-            <div className="savings-display">
-              <span className="savings-icon">💰</span>
-              <div className="savings-container">
-                <div className="savings-header">
-                  <span className="savings-label">Monthly Savings</span>
-                  <button 
-                    onClick={() => setShowSalaryModal(true)}
-                    className="salary-btn"
-                    title="Set monthly salary"
-                  >
-                    ⚙️
-                  </button>
-                </div>
-                <div className="savings-value">
-                  {monthlySalary > 0 ? (
-                    <>
-                      <span className="savings-amount">
-                        {formatCurrency(getCurrentMonthSavings())}
-                      </span>
-                      {(() => {
-                        const comparison = getSavingsComparison();
-                        return comparison.previous > 0 ? (
-                          <span className={`savings-comparison ${comparison.isIncrease ? 'positive' : 'negative'}`}>
-                            {comparison.isIncrease ? '↗' : '↘'} {Math.abs(comparison.percentageChange).toFixed(1)}%
-                          </span>
-                        ) : null;
-                      })()}
-                    </>
-                  ) : (
-                    <span className="no-salary">Set salary to track savings</span>
-                  )}
-                </div>
-                <div className="savings-footer">
-                  <span className="salary-info">
-                    Salary: {monthlySalary > 0 ? formatCurrency(monthlySalary) : 'Not set'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
             {/* Action Buttons */}
             <div className="action-buttons">
-              <button
-                onClick={() => setShowBudgetModal(true)}
-                className="action-btn budget-btn"
-                title="Set category budgets"
-              >
-                <DollarSign size={14} />
-                <span className="btn-text">Budget</span>
-              </button>
               <Link
                 to={`/${getMonthName(selectedMonth).toLowerCase()}/database`}
                 className="action-btn database-btn"
