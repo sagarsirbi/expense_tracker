@@ -864,11 +864,9 @@ export function ExpenseTracker() {
               <div className="summary-card-content">
                 <h3>Budget Status</h3>
                 <p>{formatCurrency(monthlyBudgetSummary().remaining)}</p>
-                <div className="budget-status">
-                  <span className={`budget-indicator ${monthlyBudgetSummary().status}`}>
-                    {monthlyBudgetSummary().percentage.toFixed(0)}% used
-                  </span>
-                </div>
+                <span className={`budget-indicator ${monthlyBudgetSummary().status}`}>
+                  {monthlyBudgetSummary().percentage.toFixed(0)}% used
+                </span>
               </div>
               <DollarSign size={24} className="summary-card-icon" />
             </div>
