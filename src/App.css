@@ -1732,7 +1732,41 @@ body {
   gap: 20px;
 }
 
+/* Two Column Content Layout */
+.content-columns {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.transactions-section {
+  background: rgba(248, 250, 252, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 @media (max-width: 1024px) {
+  .content-columns {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
   .main-layout {
     grid-template-columns: 1fr;
   }

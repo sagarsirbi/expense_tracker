@@ -24,7 +24,7 @@ export function ExpenseTracker() {
   // Toast/Snackbar state for insights
   const [toasts, setToasts] = useState<Array<{
     id: string;
-    type: 'success' | 'warning' | 'caution' | 'info';
+    type: 'success' | 'warning' | 'caution' | 'info' | 'category';
     title: string;
     message: string;
     suggestion: string;
@@ -893,110 +893,181 @@ export function ExpenseTracker() {
           )}
         </div>
 
-        {/* Enhanced Chart Section */}
-        <div className="chart-section">
-          <div className="chart-header">
-            <TrendingUp className="text-purple-500" size={20} />
-            <h2 className="chart-title">
-              {chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)} Expenses
-              {chartCategoryFilter !== 'all' && ` - ${chartCategoryFilter}`}
-              {chartTimeFilter === 'daily' && ` - ${getMonthName(selectedMonth)} ${selectedYear}`}
-            </h2>
-          </div>
-          
-          {/* Chart Controls */}
-          <div className="chart-controls">
-            <div className="chart-filter-group">
-              <label className="filter-label">Time Period:</label>
-              <div className="filter-buttons">
-                <button 
-                  className={`filter-btn ${chartTimeFilter === 'daily' ? 'active' : ''}`}
-                  onClick={() => setChartTimeFilter('daily')}
-                >
-                  Daily
-                </button>
-                <button 
-                  className={`filter-btn ${chartTimeFilter === 'weekly' ? 'active' : ''}`}
-                  onClick={() => setChartTimeFilter('weekly')}
-                >
-                  Weekly
-                </button>
-                <button 
-                  className={`filter-btn ${chartTimeFilter === 'monthly' ? 'active' : ''}`}
-                  onClick={() => setChartTimeFilter('monthly')}
-                >
-                  Monthly
-                </button>
+        {/* Two Column Layout */}
+        <div className="content-columns">
+          {/* Left Column - Chart and Form */}
+          <div className="left-column">
+            {/* Enhanced Chart Section */}
+            <div className="chart-section">
+              <div className="chart-header">
+                <TrendingUp className="text-purple-500" size={20} />
+                <h2 className="chart-title">
+                  {chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)} Expenses
+                  {chartCategoryFilter !== 'all' && ` - ${chartCategoryFilter}`}
+                  {chartTimeFilter === 'daily' && ` - ${getMonthName(selectedMonth)} ${selectedYear}`}
+                </h2>
               </div>
-            </div>
-            
-            <div className="chart-filter-group">
-              <label className="filter-label">Category:</label>
-              <select 
-                className="category-filter-select"
-                value={chartCategoryFilter}
-                onChange={(e) => setChartCategoryFilter(e.target.value)}
-              >
-                <option value="all">All Categories</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+              
+              {/* Chart Controls */}
+              <div className="chart-controls">
+                <div className="chart-filter-group">
+                  <label className="filter-label">Time Period:</label>
+                  <div className="filter-buttons">
+                    <button 
+                      className={`filter-btn ${chartTimeFilter === 'daily' ? 'active' : ''}`}
+                      onClick={() => setChartTimeFilter('daily')}
+                    >
+                      Daily
+                    </button>
+                    <button 
+                      className={`filter-btn ${chartTimeFilter === 'weekly' ? 'active' : ''}`}
+                      onClick={() => setChartTimeFilter('weekly')}
+                    >
+                      Weekly
+                    </button>
+                    <button 
+                      className={`filter-btn ${chartTimeFilter === 'monthly' ? 'active' : ''}`}
+                      onClick={() => setChartTimeFilter('monthly')}
+                    >
+                      Monthly
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="chart-filter-group">
+                  <label className="filter-label">Category:</label>
+                  <select 
+                    className="category-filter-select"
+                    value={chartCategoryFilter}
+                    onChange={(e) => setChartCategoryFilter(e.target.value)}
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          {chartData.length === 0 ? (
-            <div className="chart-placeholder">
-              {chartCategoryFilter === 'all' 
-                ? `Add expenses to see the ${chartTimeFilter} graph`
-                : `No expenses found for ${chartCategoryFilter} category`
-              }
+              {chartData.length === 0 ? (
+                <div className="chart-placeholder">
+                  {chartCategoryFilter === 'all' 
+                    ? `Add expenses to see the ${chartTimeFilter} graph`
+                    : `No expenses found for ${chartCategoryFilter} category`
+                  }
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#666"
+                      style={{ fontSize: '12px' }}
+                      angle={chartTimeFilter === 'monthly' ? -45 : 0}
+                      textAnchor={chartTimeFilter === 'monthly' ? 'end' : 'middle'}
+                      height={chartTimeFilter === 'monthly' ? 60 : 30}
+                    />
+                    <YAxis 
+                      stroke="#666"
+                      style={{ fontSize: '12px' }}
+                      label={{ value: `Amount (${getCurrencySymbol(currency)})`, angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e5e7eb', 
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
+                      labelFormatter={(label) => `${chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)}: ${label}`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="amount" 
+                      stroke="#8b5cf6" 
+                      strokeWidth={3}
+                      dot={{ fill: '#8b5cf6', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                      activeDot={{ r: 7, stroke: '#8b5cf6', strokeWidth: 2, fill: '#fff' }}
+                      strokeDasharray={chartCategoryFilter !== 'all' ? '5,5' : '0'}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#666"
-                  style={{ fontSize: '12px' }}
-                  angle={chartTimeFilter === 'monthly' ? -45 : 0}
-                  textAnchor={chartTimeFilter === 'monthly' ? 'end' : 'middle'}
-                  height={chartTimeFilter === 'monthly' ? 60 : 30}
-                />
-                <YAxis 
-                  stroke="#666"
-                  style={{ fontSize: '12px' }}
-                  label={{ value: `Amount (${getCurrencySymbol(currency)})`, angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                  }}
-                  formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
-                  labelFormatter={(label) => `${chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)}: ${label}`}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="amount" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={3}
-                  dot={{ fill: '#8b5cf6', r: 5, strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 7, stroke: '#8b5cf6', strokeWidth: 2, fill: '#fff' }}
-                  strokeDasharray={chartCategoryFilter !== 'all' ? '5,5' : '0'}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
 
-        {/* Main Layout */}
-        <div className="main-layout">
-          {/* Form Section */}
-          <div>
+          {/* Right Column - Add Expense Form and Category Breakdown */}
+          <div className="right-column">
+            {/* Category Breakdown - Moved to top */}
+            <div className="breakdown-section">
+            <div className="breakdown-header">
+              <PieChart className="text-purple-500" size={20} />
+              <h2 className="breakdown-title">Category Breakdown - {getMonthName(selectedMonth)} {selectedYear}</h2>
+            </div>
+            {categoryTotals.length === 0 ? (
+              <div className="breakdown-placeholder">
+                Add expenses for {getMonthName(selectedMonth)} {selectedYear} to see breakdown
+              </div>
+            ) : (
+              <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                {categoryTotals.sort((a, b) => b.total - a.total).map((cat) => {
+                  const percentage = (cat.total / totalExpenses * 100).toFixed(1);
+                  const budgetStatus = getBudgetStatus(cat.category);
+                  return (
+                    <div key={cat.category}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <span style={{fontWeight: '500', color: '#374151'}}>{cat.category}</span>
+                          {budgetStatus && (
+                            <span 
+                              className={`budget-status ${budgetStatus.status}`}
+                              style={{fontSize: '10px', padding: '2px 6px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.8)'}}
+                            >
+                              Budget: {formatCurrency(budgetStatus.budget)}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{fontSize: '14px', fontWeight: '600', color: '#1f2937'}}>{formatCurrency(cat.total)}</span>
+                      </div>
+                      <div style={{
+                        height: '8px',
+                        backgroundColor: '#f3f4f6',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        marginBottom: '4px'
+                      }}>
+                        <div
+                          style={{
+                            height: '100%',
+                            borderRadius: '4px',
+                            transition: 'width 0.5s ease',
+                            width: `${percentage}%`,
+                            backgroundColor: getColorForCategory(cat.category)
+                          }}
+                        />
+                      </div>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <p style={{margin: 0, fontSize: '12px', color: '#6b7280'}}>{percentage}% of total</p>
+                        {budgetStatus && (
+                          <p style={{
+                            margin: 0, 
+                            fontSize: '11px', 
+                            color: budgetStatus.status === 'over' ? '#dc3545' : 
+                                   budgetStatus.status === 'warning' ? '#fd7e14' : '#28a745',
+                            fontWeight: '500'
+                          }}>
+                            {budgetStatus.percentage.toFixed(0)}% of budget used
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            </div>
+
             <div className="form-section">
               <div className="form-header">
                 <Plus className="text-purple-500" size={20} />
@@ -1152,73 +1223,6 @@ export function ExpenseTracker() {
             </div>
           </div>
 
-          {/* Category Breakdown */}
-          <div className="breakdown-section">
-            <div className="breakdown-header">
-              <PieChart className="text-purple-500" size={20} />
-              <h2 className="breakdown-title">Category Breakdown - {getMonthName(selectedMonth)} {selectedYear}</h2>
-            </div>
-            {categoryTotals.length === 0 ? (
-              <div className="breakdown-placeholder">
-                Add expenses for {getMonthName(selectedMonth)} {selectedYear} to see breakdown
-              </div>
-            ) : (
-              <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                {categoryTotals.sort((a, b) => b.total - a.total).map((cat) => {
-                  const percentage = (cat.total / totalExpenses * 100).toFixed(1);
-                  const budgetStatus = getBudgetStatus(cat.category);
-                  return (
-                    <div key={cat.category}>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                          <span style={{fontWeight: '500', color: '#374151'}}>{cat.category}</span>
-                          {budgetStatus && (
-                            <span 
-                              className={`budget-status ${budgetStatus.status}`}
-                              style={{fontSize: '10px', padding: '2px 6px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.8)'}}
-                            >
-                              Budget: {formatCurrency(budgetStatus.budget)}
-                            </span>
-                          )}
-                        </div>
-                        <span style={{fontSize: '14px', fontWeight: '600', color: '#1f2937'}}>{formatCurrency(cat.total)}</span>
-                      </div>
-                      <div style={{
-                        height: '8px',
-                        backgroundColor: '#f3f4f6',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                        marginBottom: '4px'
-                      }}>
-                        <div
-                          style={{
-                            height: '100%',
-                            borderRadius: '4px',
-                            transition: 'width 0.5s ease',
-                            width: `${percentage}%`,
-                            backgroundColor: getColorForCategory(cat.category)
-                          }}
-                        />
-                      </div>
-                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <p style={{margin: 0, fontSize: '12px', color: '#6b7280'}}>{percentage}% of total</p>
-                        {budgetStatus && (
-                          <p style={{
-                            margin: 0, 
-                            fontSize: '11px', 
-                            color: budgetStatus.status === 'over' ? '#dc3545' : 
-                                   budgetStatus.status === 'warning' ? '#fd7e14' : '#28a745',
-                            fontWeight: '500'
-                          }}>
-                            {budgetStatus.percentage.toFixed(0)}% of budget used
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
       </div>
