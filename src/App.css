@@ -188,13 +188,6 @@ body {
   gap: 12px;
 }
 
-.logo-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .money-icon {
   font-size: 48px;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
@@ -250,11 +243,34 @@ body {
   height: 36px;
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
+  animation: logoFloat 4s ease-in-out infinite;
 }
 
 .custom-logo:hover {
-  transform: scale(1.1);
+  transform: scale(1.15) rotate(5deg);
+  filter: drop-shadow(0 4px 12px rgba(102, 126, 234, 0.4));
+  animation-play-state: paused;
+}
+
+/* Logo floating animation */
+@keyframes logoFloat {
+  0%, 100% { 
+    transform: translateY(0) rotate(0deg); 
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+  }
+  25% { 
+    transform: translateY(-3px) rotate(1deg); 
+    filter: drop-shadow(0 4px 8px rgba(102, 126, 234, 0.2));
+  }
+  50% { 
+    transform: translateY(-5px) rotate(0deg); 
+    filter: drop-shadow(0 6px 10px rgba(118, 75, 162, 0.25));
+  }
+  75% { 
+    transform: translateY(-3px) rotate(-1deg); 
+    filter: drop-shadow(0 4px 8px rgba(240, 147, 251, 0.2));
+  }
 }
 
 .brand-text {

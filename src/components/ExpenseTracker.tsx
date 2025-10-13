@@ -724,13 +724,11 @@ export function ExpenseTracker() {
             
             {/* Logo and Brand */}
             <div className="header-brand">
-              <div className="logo-container">
-                <img 
-                  src="public/arthiq_logo.png" 
-                  alt="Arthiq Logo" 
-                  className="custom-logo"
-                />
-              </div>
+              <img 
+                src="public/arthiq_logo.png" 
+                alt="Arthiq Logo" 
+                className="custom-logo"
+              />
               <div className="brand-text">
                 <h1 className="header-title">
                   <span className="title-main">Arthiq</span>
