@@ -535,18 +535,6 @@ export function ExpenseTracker() {
     ? categoryTotals.reduce((max, cat) => cat.total > max.total ? cat : max, categoryTotals[0])
     : null;
 
-  // Calculate previous month data for comparison
-  const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
-  const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
-  
-  const prevMonthExpenses = expenses.filter(exp => {
-    const expDate = new Date(exp.date);
-    return expDate.getMonth() === prevMonth && expDate.getFullYear() === prevYear;
-  });
-
-  const prevMonthTotal = prevMonthExpenses.reduce((sum, exp) => sum + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR'), 0);
-  const monthChange = prevMonthTotal > 0 ? ((totalExpenses - prevMonthTotal) / prevMonthTotal) * 100 : 0;
-
   return (
     <div className="expense-tracker">
       <div className="container">
@@ -719,14 +707,6 @@ export function ExpenseTracker() {
             <div className="summary-card-content">
               <h3>Monthly Total</h3>
               <p>{formatCurrency(totalExpenses)}</p>
-              <div className="month-comparison">
-                {monthChange !== 0 && (
-                  <span className={`change-indicator ${monthChange > 0 ? 'increase' : 'decrease'}`}>
-                    {monthChange > 0 ? '↑' : '↓'} {Math.abs(monthChange).toFixed(1)}%
-                  </span>
-                )}
-                <span className="comparison-text">vs last month</span>
-              </div>
             </div>
             <TrendingUp size={32} className="summary-card-icon" />
           </div>
@@ -735,11 +715,6 @@ export function ExpenseTracker() {
             <div className="summary-card-content">
               <h3>Monthly Entries</h3>
               <p>{filteredExpenses.length}</p>
-              <div className="month-comparison">
-                <span className="comparison-text">
-                  {getMonthName(selectedMonth)} {selectedYear}
-                </span>
-              </div>
             </div>
             <Calendar size={32} className="summary-card-icon" />
           </div>
@@ -759,9 +734,6 @@ export function ExpenseTracker() {
             <div className="summary-card-content">
               <h3>Daily Average</h3>
               <p>{filteredExpenses.length > 0 ? formatCurrency(totalExpenses / new Date(selectedYear, selectedMonth + 1, 0).getDate()) : formatCurrency(0)}</p>
-              <div className="month-comparison">
-                <span className="comparison-text">per day this month</span>
-              </div>
             </div>
             <Calendar size={32} className="summary-card-icon" />
           </div>
@@ -771,53 +743,15 @@ export function ExpenseTracker() {
               <div className="summary-card-content">
                 <h3>Budget Status</h3>
                 <p>{formatCurrency(monthlyBudgetSummary().remaining)}</p>
-                <div className="month-comparison">
-                  <span className={`change-indicator ${monthlyBudgetSummary().status}`}>
+                <div className="budget-status">
+                  <span className={`budget-indicator ${monthlyBudgetSummary().status}`}>
                     {monthlyBudgetSummary().percentage.toFixed(0)}% used
                   </span>
-                  <span className="comparison-text">of monthly budget</span>
                 </div>
               </div>
               <DollarSign size={32} className="summary-card-icon" />
             </div>
           )}
-        </div>
-
-        {/* Monthly Comparison Section */}
-        <div className="monthly-comparison">
-          <div className="comparison-header">
-            <div className="comparison-title">
-              <h3>Monthly Comparison</h3>
-              <p>Compare {getMonthName(selectedMonth)} {selectedYear} with {getMonthName(prevMonth)} {prevYear}</p>
-            </div>
-          </div>
-          
-          <div className="comparison-content">
-            <div className="comparison-card current-month">
-              <div className="comparison-month-label">Current Month</div>
-              <div className="comparison-month-name">{getMonthName(selectedMonth)} {selectedYear}</div>
-              <div className="comparison-amount">{formatCurrency(totalExpenses)}</div>
-              <div className="comparison-entries">{filteredExpenses.length} expenses</div>
-            </div>
-            
-            <div className="comparison-vs">
-              <div className="vs-indicator">VS</div>
-              <div className="change-indicator-large">
-                {monthChange !== 0 && (
-                  <span className={`change-large ${monthChange > 0 ? 'increase' : 'decrease'}`}>
-                    {monthChange > 0 ? '↑' : '↓'} {Math.abs(monthChange).toFixed(1)}%
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            <div className="comparison-card previous-month">
-              <div className="comparison-month-label">Previous Month</div>
-              <div className="comparison-month-name">{getMonthName(prevMonth)} {prevYear}</div>
-              <div className="comparison-amount">{formatCurrency(prevMonthTotal)}</div>
-              <div className="comparison-entries">{prevMonthExpenses.length} expenses</div>
-            </div>
-          </div>
         </div>
 
         {/* Chart Section */}
