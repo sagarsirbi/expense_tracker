@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database, X } from 'lucide-react';
+import { Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database, X, Settings } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
@@ -63,6 +63,9 @@ export function ExpenseTracker() {
   const [monthlySalary, setMonthlySalary] = useState<number>(0);
   const [showSalaryModal, setShowSalaryModal] = useState(false);
   const [salaryHistory, setSalaryHistory] = useState<{[key: string]: number}>({});
+
+  // Settings state
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   // Currency conversion functions
   const getCurrencySymbol = (curr: 'INR' | 'EUR') => {
@@ -158,6 +161,11 @@ export function ExpenseTracker() {
     };
   }, []);
 
+  // Load salary data when month/year changes
+  useEffect(() => {
+    loadSalaryData();
+  }, [selectedMonth, selectedYear]);
+
   // Initialize database and load data
   const initializeDatabase = async () => {
     try {
@@ -204,6 +212,76 @@ export function ExpenseTracker() {
     } catch (error) {
       console.error('Error loading budgets:', error);
     }
+  };
+
+  // Load salary data
+  const loadSalaryData = async () => {
+    try {
+      const currentMonthKey = `${selectedYear}-${selectedMonth}`;
+      const storedSalaryHistory = localStorage.getItem('salaryHistory');
+      if (storedSalaryHistory) {
+        const history = JSON.parse(storedSalaryHistory);
+        setSalaryHistory(history);
+        setMonthlySalary(history[currentMonthKey] || 0);
+      }
+    } catch (error) {
+      console.error('Error loading salary data:', error);
+    }
+  };
+
+  // Save salary data
+  const saveSalaryData = async (salary: number) => {
+    try {
+      const currentMonthKey = `${selectedYear}-${selectedMonth}`;
+      const updatedHistory = { ...salaryHistory, [currentMonthKey]: salary };
+      setSalaryHistory(updatedHistory);
+      setMonthlySalary(salary);
+      localStorage.setItem('salaryHistory', JSON.stringify(updatedHistory));
+      setShowSalaryModal(false);
+    } catch (error) {
+      console.error('Error saving salary data:', error);
+    }
+  };
+
+  // Calculate current month savings
+  const getCurrentMonthSavings = () => {
+    const currentMonthExpenses = filteredExpenses.reduce((total, expense) => {
+      return total + parseFloat(expense.amount);
+    }, 0);
+    return monthlySalary - currentMonthExpenses;
+  };
+
+  // Calculate previous month savings for comparison
+  const getPreviousMonthSavings = () => {
+    const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+    const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+    const prevMonthKey = `${prevYear}-${prevMonth}`;
+    const prevSalary = salaryHistory[prevMonthKey] || 0;
+    
+    const prevMonthExpenses = expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate.getMonth() === prevMonth && expenseDate.getFullYear() === prevYear;
+    }).reduce((total, expense) => {
+      return total + parseFloat(expense.amount);
+    }, 0);
+    
+    return prevSalary - prevMonthExpenses;
+  };
+
+  // Calculate savings comparison
+  const getSavingsComparison = () => {
+    const currentSavings = getCurrentMonthSavings();
+    const previousSavings = getPreviousMonthSavings();
+    const difference = currentSavings - previousSavings;
+    const percentageChange = previousSavings !== 0 ? (difference / previousSavings) * 100 : 0;
+    
+    return {
+      current: currentSavings,
+      previous: previousSavings,
+      difference,
+      percentageChange,
+      isIncrease: difference > 0
+    };
   };
 
   // Migrate existing expenses to include currency field
@@ -717,6 +795,47 @@ export function ExpenseTracker() {
               </div>
             </div>
 
+            {/* Monthly Savings Display */}
+            <div className="savings-display">
+              <span className="savings-icon">💰</span>
+              <div className="savings-container">
+                <div className="savings-header">
+                  <span className="savings-label">Monthly Savings</span>
+                  <button 
+                    onClick={() => setShowSalaryModal(true)}
+                    className="salary-btn"
+                    title="Set monthly salary"
+                  >
+                    ⚙️
+                  </button>
+                </div>
+                <div className="savings-value">
+                  {monthlySalary > 0 ? (
+                    <>
+                      <span className="savings-amount">
+                        {formatCurrency(getCurrentMonthSavings())}
+                      </span>
+                      {(() => {
+                        const comparison = getSavingsComparison();
+                        return comparison.previous > 0 ? (
+                          <span className={`savings-comparison ${comparison.isIncrease ? 'positive' : 'negative'}`}>
+                            {comparison.isIncrease ? '↗' : '↘'} {Math.abs(comparison.percentageChange).toFixed(1)}%
+                          </span>
+                        ) : null;
+                      })()}
+                    </>
+                  ) : (
+                    <span className="no-salary">Set salary to track savings</span>
+                  )}
+                </div>
+                <div className="savings-footer">
+                  <span className="salary-info">
+                    Salary: {monthlySalary > 0 ? formatCurrency(monthlySalary) : 'Not set'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Action Buttons */}
             <div className="action-buttons">
               <button
@@ -1200,6 +1319,95 @@ export function ExpenseTracker() {
           </div>
         </div>
       )}
+
+      {/* Salary Modal */}
+      {showSalaryModal && (
+        <div className="modal-overlay" onClick={() => setShowSalaryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Set Monthly Salary</h3>
+              <button 
+                onClick={() => setShowSalaryModal(false)}
+                className="modal-close-btn"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="salary-input-container">
+              <div className="salary-input-group">
+                <label className="salary-label">
+                  Monthly Salary ({currency})
+                </label>
+                <input
+                  type="number"
+                  placeholder="Enter your monthly salary"
+                  defaultValue={monthlySalary || ''}
+                  className="salary-input"
+                  id="salary-input"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              
+              <div className="salary-info">
+                <p className="salary-help-text">
+                  Your salary will be used to calculate monthly savings and compare with previous months.
+                </p>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                onClick={() => {
+                  const input = document.getElementById('salary-input') as HTMLInputElement;
+                  const salary = parseFloat(input.value) || 0;
+                  saveSalaryData(salary);
+                }}
+                className="save-btn"
+              >
+                Save Salary
+              </button>
+              <button
+                onClick={() => setShowSalaryModal(false)}
+                className="cancel-btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Settings Button */}
+      <div className="settings-container">
+        <button 
+          className="settings-button"
+          onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+          title="Settings"
+        >
+          <Settings size={20} />
+        </button>
+        
+        {showSettingsMenu && (
+          <div className="settings-menu">
+            <div className="settings-menu-item" onClick={() => {
+              setShowBudgetModal(true);
+              setShowSettingsMenu(false);
+            }}>
+              <DollarSign size={16} />
+              <span>Set Budget</span>
+            </div>
+            <div className="settings-menu-item" onClick={() => {
+              setShowSalaryModal(true);
+              setShowSettingsMenu(false);
+            }}>
+              <TrendingUp size={16} />
+              <span>Enter Salary</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Toast/Snackbar Container */}
       <div className="toast-container">
