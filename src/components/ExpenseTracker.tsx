@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { Wallet, Trash2, BarChart3, Receipt, TrendingUp, FolderPlus, Target, ChevronLeft, ChevronRight, TableProperties, X, SlidersHorizontal, CirclePlus, PiggyBank, CalendarDays, Banknote, LayoutGrid, ArrowDownRight, Sparkles, IndianRupee, Euro } from 'lucide-react';
+import { Wallet, Trash2, BarChart3, TrendingUp, FolderPlus, Target, ChevronLeft, ChevronRight, TableProperties, X, SlidersHorizontal, CirclePlus, PiggyBank, CalendarDays, Banknote, LayoutGrid, ArrowDownRight, Sparkles, IndianRupee, Euro } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage } from '../services/database';
@@ -481,9 +481,9 @@ export function ExpenseTracker() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="w-full p-5">
+      <div className="w-full p-6 space-y-6">
         {/* Header */}
-        <Card className="mb-6 overflow-hidden relative">
+        <Card className="overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 via-transparent to-teal-50/40 pointer-events-none" />
           <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
           <CardContent className="p-5 relative">
@@ -572,116 +572,62 @@ export function ExpenseTracker() {
           </CardContent>
         </Card>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="border-l-4 border-l-emerald-500">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Monthly Total</p>
-                <p className="text-xl font-bold mt-1">{formatCurrency(totalExpenses)}</p>
-                {currency === 'EUR' && <p className="text-[10px] text-muted-foreground">converted from INR</p>}
-              </div>
-              <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-emerald-600" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Summary Stats */}
+        {(() => {
+          const hasBudget = Object.keys(budgets).length > 0;
+          const hasSalary = monthlySalary > 0;
+          const budgetSummary = hasBudget ? monthlyBudgetSummary() : null;
+          const convertedSalary = hasSalary ? convertAmount(monthlySalary, salaryCurrency) : 0;
+          const savingsAmount = convertedSalary - totalExpenses;
+          const savingsPositive = convertedSalary > totalExpenses;
 
-          <Card className="border-l-4 border-l-sky-500">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Monthly Entries</p>
-                <p className="text-xl font-bold mt-1">{filteredExpenses.length}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-sky-50 flex items-center justify-center">
-                <Receipt className="h-5 w-5 text-sky-600" />
-              </div>
-            </CardContent>
-          </Card>
+          const stats = [
+            { label: 'Total Spent', value: formatCurrency(totalExpenses), sub: currency === 'EUR' ? 'converted from INR' : `${filteredExpenses.length} transactions`, icon: Wallet, gradient: 'from-emerald-500 to-teal-600', iconBg: 'bg-white/20' },
+            { label: 'Daily Average', value: filteredExpenses.length > 0 ? formatCurrency(totalExpenses / new Date(selectedYear, selectedMonth + 1, 0).getDate()) : formatCurrency(0), sub: `${new Date(selectedYear, selectedMonth + 1, 0).getDate()} days in month`, icon: CalendarDays, gradient: 'from-amber-500 to-orange-600', iconBg: 'bg-white/20' },
+            { label: 'Top Category', value: maxCategory ? maxCategory.category : 'N/A', sub: maxCategory ? `${formatCurrency(maxCategory.total)} · ${(maxCategory.total / totalExpenses * 100).toFixed(0)}%` : 'No data', icon: BarChart3, gradient: 'from-violet-500 to-purple-600', iconBg: 'bg-white/20' },
+            ...(hasBudget && budgetSummary ? [{
+              label: 'Budget', value: formatCurrency(budgetSummary.remaining), sub: `${budgetSummary.percentage.toFixed(0)}% used · ${formatCurrency(budgetSummary.totalBudget)} total`,
+              icon: Target, gradient: budgetSummary.status === 'over' ? 'from-red-500 to-rose-600' : budgetSummary.status === 'warning' ? 'from-amber-500 to-yellow-600' : 'from-teal-500 to-cyan-600', iconBg: 'bg-white/20'
+            }] : []),
+            ...(hasSalary ? [{
+              label: savingsPositive ? 'Savings' : 'Overspent', value: formatCurrency(Math.abs(savingsAmount)),
+              sub: savingsPositive ? `${((savingsAmount / convertedSalary) * 100).toFixed(0)}% of ${formatCurrency(convertedSalary)}` : `${((Math.abs(savingsAmount) / convertedSalary) * 100).toFixed(0)}% over salary`,
+              icon: savingsPositive ? PiggyBank : ArrowDownRight, gradient: savingsPositive ? 'from-indigo-500 to-blue-600' : 'from-red-500 to-rose-600', iconBg: 'bg-white/20'
+            }] : []),
+          ];
 
-          <Card className="border-l-4 border-l-violet-500">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Top Category</p>
-                <p className="text-xl font-bold mt-1">{maxCategory ? maxCategory.category : 'N/A'}</p>
-                <p className="text-xs text-muted-foreground">{maxCategory ? formatCurrency(maxCategory.total) : formatCurrency(0)}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-violet-50 flex items-center justify-center">
-                <BarChart3 className="h-5 w-5 text-violet-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-amber-500">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Daily Average</p>
-                <p className="text-xl font-bold mt-1">
-                  {filteredExpenses.length > 0 ? formatCurrency(totalExpenses / new Date(selectedYear, selectedMonth + 1, 0).getDate()) : formatCurrency(0)}
-                </p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
-                <CalendarDays className="h-5 w-5 text-amber-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {Object.keys(budgets).length > 0 && (
-            <Card className="border-l-4 border-l-teal-500">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Budget Status</p>
-                  <p className="text-xl font-bold mt-1">{formatCurrency(monthlyBudgetSummary().remaining)}</p>
-                  <Badge variant="secondary" className={cn("mt-1",
-                    monthlyBudgetSummary().status === 'over' ? 'bg-red-100 text-red-700' :
-                    monthlyBudgetSummary().status === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                  )}>
-                    {monthlyBudgetSummary().percentage.toFixed(0)}% used
-                  </Badge>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-teal-50 flex items-center justify-center">
-                  <Target className="h-5 w-5 text-teal-600" />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {monthlySalary > 0 && (() => {
-            const convertedSalary = convertAmount(monthlySalary, salaryCurrency);
+          return (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {stats.map((stat, i) => {
+            const Icon = stat.icon;
             return (
-            <Card className="border-l-4 border-l-indigo-500">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Monthly Savings</p>
-                  <p className={cn("text-xl font-bold mt-1", convertedSalary > totalExpenses ? 'text-emerald-600' : 'text-red-600')}>
-                    {formatCurrency(convertedSalary - totalExpenses)}
-                  </p>
-                  <Badge variant="secondary" className={cn("mt-1",
-                    convertedSalary > totalExpenses ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                  )}>
-                    {convertedSalary > totalExpenses
-                      ? `${(((convertedSalary - totalExpenses) / convertedSalary) * 100).toFixed(0)}% saved`
-                      : `${((totalExpenses - convertedSalary) / convertedSalary * 100).toFixed(0)}% overspent`}
-                  </Badge>
+              <div key={i} className={cn("relative rounded-xl bg-gradient-to-br text-white p-4 shadow-lg overflow-hidden group hover:shadow-xl transition-shadow", stat.gradient)}>
+                <div className="absolute -right-3 -top-3 opacity-[0.08]">
+                  <Icon className="h-24 w-24" />
                 </div>
-                <div className="h-10 w-10 rounded-full bg-indigo-50 flex items-center justify-center">
-                  {convertedSalary > totalExpenses
-                    ? <PiggyBank className="h-5 w-5 text-indigo-600" />
-                    : <ArrowDownRight className="h-5 w-5 text-red-500" />}
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center", stat.iconBg)}>
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-[11px] font-medium text-white/80 uppercase tracking-wider">{stat.label}</span>
+                  </div>
+                  <p className="text-lg font-bold tracking-tight leading-tight">{stat.value}</p>
+                  <p className="text-[11px] text-white/70 mt-1 truncate">{stat.sub}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
             );
-          })()}
+          })}
         </div>
+          );
+        })()}
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1.5fr] gap-6">
-          {/* Left Column */}
-          <div className="flex flex-col gap-6">
-            {/* Chart Section */}
-            <Card>
-              <CardHeader className="pb-2">
+        {/* Charts Row - Expense Trend + Category Pie */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Expense Trend Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-emerald-500" />
                   <CardTitle className="text-lg">
@@ -690,66 +636,169 @@ export function ExpenseTracker() {
                     {chartTimeFilter === 'daily' && ` - ${getMonthName(selectedMonth)} ${selectedYear}`}
                   </CardTitle>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {/* Chart Controls */}
-                <div className="flex flex-wrap items-center gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm">Time Period:</Label>
-                    <Tabs value={chartTimeFilter} onValueChange={(v) => setChartTimeFilter(v as 'daily' | 'weekly' | 'monthly')}>
-                      <TabsList>
-                        <TabsTrigger value="daily">Daily</TabsTrigger>
-                        <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                        <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm">Category:</Label>
-                    <Select value={chartCategoryFilter} onValueChange={setChartCategoryFilter}>
-                      <SelectTrigger className="w-[160px] h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center gap-3 mb-4 p-2.5 bg-muted/50 rounded-lg">
+                <Tabs value={chartTimeFilter} onValueChange={(v) => setChartTimeFilter(v as 'daily' | 'weekly' | 'monthly')}>
+                  <TabsList>
+                    <TabsTrigger value="daily">Daily</TabsTrigger>
+                    <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                    <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <Select value={chartCategoryFilter} onValueChange={setChartCategoryFilter}>
+                  <SelectTrigger className="w-[140px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {chartData.length === 0 ? (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-lg border-2 border-dashed">
+                  {chartCategoryFilter === 'all' ? `Add expenses to see the ${chartTimeFilter} graph` : `No expenses found for ${chartCategoryFilter}`}
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '11px' }}
+                      angle={chartTimeFilter === 'monthly' ? -45 : 0}
+                      textAnchor={chartTimeFilter === 'monthly' ? 'end' : 'middle'}
+                      height={chartTimeFilter === 'monthly' ? 60 : 30} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" style={{ fontSize: '11px' }}
+                      tickFormatter={(v) => `${getCurrencySymbol(currency)}${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
+                      labelFormatter={(label) => `${chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)}: ${label}`} />
+                    <Line type="monotone" dataKey="amount" stroke="#059669" strokeWidth={3}
+                      dot={{ fill: '#059669', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                      activeDot={{ r: 6, stroke: '#059669', strokeWidth: 2, fill: '#ecfdf5' }}
+                      strokeDasharray={chartCategoryFilter !== 'all' ? '5,5' : '0'} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Spending by Category Pie Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="h-5 w-5 text-violet-500" />
+                <CardTitle className="text-lg">Spending by Category - {getMonthName(selectedMonth)}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {categoryPieData.length === 0 ? (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-lg border-2 border-dashed">
+                  Add expenses to see category breakdown
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <ResponsiveContainer width="55%" height={280}>
+                    <PieChart>
+                      <Pie data={categoryPieData} cx="50%" cy="50%" innerRadius={55} outerRadius={95}
+                        dataKey="value" paddingAngle={3} strokeWidth={2} stroke="hsl(var(--card))">
+                        {categoryPieData.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color || PIE_COLORS[idx % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        formatter={(value) => [formatCurrency(Number(value)), 'Amount']} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex-1 space-y-2">
+                    {categoryPieData.map(cat => (
+                      <div key={cat.name} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                        <span className="text-xs truncate flex-1">{cat.name}</span>
+                        <span className="text-xs font-semibold tabular-nums">{formatCurrency(cat.value)}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-                {chartData.length === 0 ? (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-lg border-2 border-dashed">
-                    {chartCategoryFilter === 'all' ? `Add expenses to see the ${chartTimeFilter} graph` : `No expenses found for ${chartCategoryFilter}`}
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={350}>
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }}
-                        angle={chartTimeFilter === 'monthly' ? -45 : 0}
-                        textAnchor={chartTimeFilter === 'monthly' ? 'end' : 'middle'}
-                        height={chartTimeFilter === 'monthly' ? 60 : 30} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }}
-                        label={{ value: `Amount (${getCurrencySymbol(currency)})`, angle: -90, position: 'insideLeft' }} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                        formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
-                        labelFormatter={(label) => `${chartTimeFilter.charAt(0).toUpperCase() + chartTimeFilter.slice(1)}: ${label}`} />
-                      <Line type="monotone" dataKey="amount" stroke="#059669" strokeWidth={3}
-                        dot={{ fill: '#059669', r: 5, strokeWidth: 2, stroke: '#fff' }}
-                        activeDot={{ r: 7, stroke: '#059669', strokeWidth: 2, fill: '#ecfdf5' }}
-                        strokeDasharray={chartCategoryFilter !== 'all' ? '5,5' : '0'} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+        {/* Charts Row - Monthly Trend + Expense vs Savings */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Monthly Expense vs Savings Bar Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-sky-500" />
+                <CardTitle className="text-lg">Expenses vs Savings - {selectedYear}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {monthlyTrendData.every(m => m.expense === 0 && m.savings === 0) ? (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-lg border-2 border-dashed">
+                  Add expenses and set salary to see comparison
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={monthlyTrendData} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '11px' }} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" style={{ fontSize: '11px' }}
+                      tickFormatter={(v) => `${getCurrencySymbol(currency)}${Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      formatter={(value) => [formatCurrency(Number(value))]} />
+                    <Legend />
+                    <Bar dataKey="expense" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="savings" name="Savings" fill="#059669" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Right Column */}
-          <div className="flex flex-col gap-6">
-            {/* Category Breakdown */}
-            <Card>
+          {/* Monthly Trend Line Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-amber-500" />
+                <CardTitle className="text-lg">Monthly Trend - {selectedYear}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {monthlyTrendData.every(m => m.expense === 0 && m.salary === 0) ? (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm bg-muted/30 rounded-lg border-2 border-dashed">
+                  Add expenses and set salary to see trends
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={monthlyTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '11px' }} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" style={{ fontSize: '11px' }}
+                      tickFormatter={(v) => `${getCurrencySymbol(currency)}${Math.abs(v) >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      formatter={(value) => [formatCurrency(Number(value))]} />
+                    <Legend />
+                    <Line type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" strokeWidth={2.5}
+                      dot={{ fill: '#ef4444', r: 3, strokeWidth: 2, stroke: '#fff' }} />
+                    <Line type="monotone" dataKey="savings" name="Savings" stroke="#059669" strokeWidth={2.5}
+                      dot={{ fill: '#059669', r: 3, strokeWidth: 2, stroke: '#fff' }} />
+                    <Line type="monotone" dataKey="salary" name="Salary" stroke="#6366f1" strokeWidth={2} strokeDasharray="5,5"
+                      dot={{ fill: '#6366f1', r: 3, strokeWidth: 2, stroke: '#fff' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bottom Section - Category Breakdown + Add Expense + History */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1.2fr] gap-6">
+          {/* Category Breakdown */}
+          <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <LayoutGrid className="h-5 w-5 text-violet-500" />
@@ -851,43 +900,58 @@ export function ExpenseTracker() {
 
             {/* Expense History */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Expense History - {getMonthName(selectedMonth)} {selectedYear}</CardTitle>
+              <CardHeader className="pb-1">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Expense History</CardTitle>
+                  <span className="text-xs text-muted-foreground">{filteredExpenses.length} items</span>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-0 pb-0">
                 {filteredExpenses.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8 text-sm">
-                    No expenses for {getMonthName(selectedMonth)} {selectedYear}. Add your first expense above!
+                  <p className="text-center text-muted-foreground py-8 text-sm px-4">
+                    No expenses for {getMonthName(selectedMonth)} {selectedYear}
                   </p>
                 ) : (
-                  <div className="max-h-[400px] overflow-y-auto space-y-3 pr-1">
-                    {[...filteredExpenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => (
-                      <div key={exp.id} className="flex items-center justify-between p-3 rounded-lg border hover:shadow-sm transition-shadow">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-sm font-medium truncate">{exp.description}</span>
-                            <Badge className="text-[11px] shrink-0" style={{ backgroundColor: getColorForCategory(exp.category) }}>
-                              {exp.category}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(exp.date).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-base font-semibold">{formatCurrency(parseFloat(exp.amount), exp.currency || 'INR')}</span>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                            onClick={() => deleteExpense(exp.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-card z-10">
+                        <tr className="border-b text-xs text-muted-foreground">
+                          <th className="text-left font-medium py-2 px-4">Description</th>
+                          <th className="text-right font-medium py-2 px-4">Amount</th>
+                          <th className="w-8 px-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...filteredExpenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => (
+                          <tr key={exp.id} className="border-b last:border-0 hover:bg-muted/40 transition-colors group">
+                            <td className="py-2 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: getColorForCategory(exp.category) }} />
+                                <div className="min-w-0">
+                                  <span className="font-medium truncate block text-sm leading-tight">{exp.description}</span>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {exp.category}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2 px-4 text-right font-semibold tabular-nums whitespace-nowrap">
+                              {formatCurrency(parseFloat(exp.amount), exp.currency || 'INR')}
+                            </td>
+                            <td className="py-2 px-2">
+                              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-500"
+                                onClick={() => deleteExpense(exp.id)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </div>
         </div>
       </div>
 

@@ -268,92 +268,42 @@ export function AnnualView() {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
-        <Card className="border-l-4 border-l-red-400">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Expenses</p>
-              <p className="text-xl font-bold mt-1">{formatCurrency(annualTotals.totalExpenses)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{annualTotals.totalEntries} entries</p>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Summary Stats */}
+      {(() => {
+        const stats = [
+          { label: 'Total Expenses', value: formatCurrency(annualTotals.totalExpenses), sub: `${annualTotals.totalEntries} entries`, icon: Wallet, gradient: 'from-red-500 to-rose-600' },
+          { label: 'Total Savings', value: formatCurrency(annualTotals.totalSavings), sub: `${annualTotals.monthsWithSalary} months tracked`, icon: PiggyBank, gradient: annualTotals.totalSavings >= 0 ? 'from-emerald-500 to-teal-600' : 'from-red-500 to-rose-600' },
+          { label: 'Annual Savings Rate', value: `${annualTotals.annualSavingsRate.toFixed(1)}%`, sub: annualTotals.annualSavingsRate >= 0 ? 'of income saved' : 'over income', icon: ArrowUpRight, gradient: annualTotals.annualSavingsRate >= 0 ? 'from-teal-500 to-cyan-600' : 'from-red-500 to-rose-600' },
+          { label: 'Annual Expense Rate', value: `${annualTotals.annualExpenseRate.toFixed(1)}%`, sub: 'of income spent', icon: Percent, gradient: 'from-amber-500 to-orange-600' },
+          { label: 'Avg Monthly Expense', value: formatCurrency(annualTotals.avgMonthlyExpense), sub: `across ${annualTotals.monthsWithExpenses} months`, icon: TrendingDown, gradient: 'from-sky-500 to-blue-600' },
+          { label: 'Avg Monthly Savings', value: formatCurrency(annualTotals.avgMonthlySavings), sub: `across ${annualTotals.monthsWithSalary} months`, icon: TrendingUp, gradient: annualTotals.avgMonthlySavings >= 0 ? 'from-indigo-500 to-violet-600' : 'from-red-500 to-rose-600' },
+        ];
 
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Savings</p>
-              <p className={cn("text-xl font-bold mt-1", annualTotals.totalSavings >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                {formatCurrency(annualTotals.totalSavings)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {annualTotals.monthsWithSalary} months tracked
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <PiggyBank className="h-5 w-5 text-emerald-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-teal-500">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Annual Savings Rate</p>
-              <p className={cn("text-xl font-bold mt-1", annualTotals.annualSavingsRate >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                {annualTotals.annualSavingsRate.toFixed(1)}%
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-teal-50 flex items-center justify-center">
-              {annualTotals.annualSavingsRate >= 0
-                ? <ArrowUpRight className="h-5 w-5 text-teal-600" />
-                : <ArrowDownRight className="h-5 w-5 text-red-500" />}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-amber-500">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Annual Expense Rate</p>
-              <p className="text-xl font-bold mt-1">{annualTotals.annualExpenseRate.toFixed(1)}%</p>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
-              <Percent className="h-5 w-5 text-amber-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-sky-500">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Avg Monthly Expense</p>
-              <p className="text-xl font-bold mt-1">{formatCurrency(annualTotals.avgMonthlyExpense)}</p>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-sky-50 flex items-center justify-center">
-              <TrendingDown className="h-5 w-5 text-sky-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-indigo-500">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Avg Monthly Savings</p>
-              <p className={cn("text-xl font-bold mt-1", annualTotals.avgMonthlySavings >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                {formatCurrency(annualTotals.avgMonthlySavings)}
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-indigo-50 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-indigo-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        return (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          {stats.map((stat, i) => {
+            const Icon = stat.icon;
+            return (
+              <div key={i} className={cn("relative rounded-xl bg-gradient-to-br text-white p-4 shadow-lg overflow-hidden group hover:shadow-xl transition-shadow", stat.gradient)}>
+                <div className="absolute -right-3 -top-3 opacity-[0.08]">
+                  <Icon className="h-24 w-24" />
+                </div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-7 w-7 rounded-lg bg-white/20 flex items-center justify-center">
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-[11px] font-medium text-white/80 uppercase tracking-wider">{stat.label}</span>
+                  </div>
+                  <p className="text-lg font-bold tracking-tight leading-tight">{stat.value}</p>
+                  <p className="text-[11px] text-white/70 mt-1 truncate">{stat.sub}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        );
+      })()}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
