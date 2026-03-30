@@ -66,9 +66,24 @@ db.exec(`
     category TEXT NOT NULL,
     amount REAL NOT NULL,
     month TEXT NOT NULL,
-    userId TEXT DEFAULT 'default'
+    userId TEXT DEFAULT 'default',
+    currency TEXT DEFAULT 'INR'
   )
 `);
+
+// Add currency column if missing (migration for existing databases)
+try {
+  db.prepare("ALTER TABLE budgets ADD COLUMN currency TEXT DEFAULT 'INR'").run();
+} catch (e) {
+  // Column already exists, ignore
+}
+
+// Clean up duplicate budget rows - keep only the latest per category
+try {
+  db.prepare(`DELETE FROM budgets WHERE rowid NOT IN (SELECT MAX(rowid) FROM budgets GROUP BY category, userId)`).run();
+} catch (e) {
+  // Ignore if fails
+}
 
 // Swagger configuration
 const swaggerOptions = {
@@ -559,8 +574,10 @@ app.post('/api/budgets', (req, res) => {
     // Default month to current month if not provided
     const budgetMonth = month || new Date().toISOString().slice(0, 7);
 
-    const stmt = db.prepare('INSERT OR REPLACE INTO budgets (id, category, amount, month, userId) VALUES (?, ?, ?, ?, ?)');
-    stmt.run(id, category, amount, budgetMonth, 'default');
+    // Delete any existing budget for this category, then insert the new one
+    db.prepare('DELETE FROM budgets WHERE category = ? AND userId = ?').run(category, 'default');
+    const stmt = db.prepare('INSERT INTO budgets (id, category, amount, month, userId, currency) VALUES (?, ?, ?, ?, ?, ?)');
+    stmt.run(id, category, amount, budgetMonth, 'default', currency || 'INR');
 
     res.status(201).json({ id, category, amount, month: budgetMonth, currency: currency || 'INR', userId: 'default' });
   } catch (error) {

@@ -326,7 +326,7 @@ export function ExpenseTracker() {
 
   const setBudgetForCategory = async (category: string, amount: number, budgetCurrency: 'INR' | 'EUR') => {
     try {
-      const budget = { id: `budget_${category}_${uuidv4()}`, category, amount, currency: budgetCurrency };
+      const budget = { id: `budget_${category}`, category, amount, currency: budgetCurrency };
       const result = await databaseAPI.setBudget(budget);
       if (result.success) {
         setBudgets({ ...budgets, [category]: amount });
@@ -1071,17 +1071,23 @@ export function ExpenseTracker() {
                       <button type="button"
                         className={cn("rounded-full h-6 px-1.5 flex items-center justify-center transition-colors",
                           budgetCurr === 'INR' ? 'bg-white text-emerald-900' : 'text-emerald-100 hover:bg-emerald-800')}
-                        onClick={() => setBudgetCurrencies({ ...budgetCurrencies, [category]: 'INR' })}><IndianRupee className="h-3 w-3" /></button>
+                        onClick={() => {
+                          setBudgetCurrencies({ ...budgetCurrencies, [category]: 'INR' });
+                          if (budgets[category]) setBudgetForCategory(category, budgets[category], 'INR');
+                        }}><IndianRupee className="h-3 w-3" /></button>
                       <button type="button"
                         className={cn("rounded-full h-6 px-1.5 flex items-center justify-center transition-colors",
                           budgetCurr === 'EUR' ? 'bg-white text-emerald-900' : 'text-emerald-100 hover:bg-emerald-800')}
-                        onClick={() => setBudgetCurrencies({ ...budgetCurrencies, [category]: 'EUR' })}><Euro className="h-3 w-3" /></button>
+                        onClick={() => {
+                          setBudgetCurrencies({ ...budgetCurrencies, [category]: 'EUR' });
+                          if (budgets[category]) setBudgetForCategory(category, budgets[category], 'EUR');
+                        }}><Euro className="h-3 w-3" /></button>
                     </div>
                     <Input type="number" placeholder={`Amount (${getCurrencySymbol(budgetCurr)})`} className="h-8 flex-1"
                       defaultValue={budgets[category] || ''}
                       onBlur={(e) => {
                         const amount = parseFloat(e.target.value);
-                        if (amount > 0) setBudgetForCategory(category, amount, budgetCurr);
+                        if (amount > 0) setBudgetForCategory(category, amount, budgetCurrencies[category] || 'INR');
                       }} />
                     {budgetStatus && (
                       <Progress value={budgetStatus.percentage} className={cn("w-20 shrink-0",
