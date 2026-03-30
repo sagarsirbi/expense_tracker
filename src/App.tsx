@@ -3,12 +3,10 @@ import { ExpenseTracker } from './components/ExpenseTracker';
 import { Database } from './components/Database';
 import { LogViewer } from './components/LogViewer';
 import ErrorBoundary from './components/ErrorBoundary';
-import './App.css';
-
 function App() {
   return (
     <Router>
-      <div className="App">
+      <div className="min-h-screen bg-background font-sans antialiased">
         <Routes>
           {/* Main expense tracker route */}
           <Route path="/" element={
