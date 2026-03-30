@@ -41,20 +41,34 @@ export interface DatabaseAPI {
   isElectron: boolean;
 }
 
-// Fallback localStorage implementation for web version
-const localStorageAPI: DatabaseAPI = {
+const API_BASE_URL = 'http://localhost:3001/api';
+
+// Server API implementation for web version (Connects to Express Backend)
+const serverAPI: DatabaseAPI = {
   isElectron: false,
   
   async getExpenses(): Promise<Expense[]> {
-    const stored = localStorage.getItem('expenses');
-    return stored ? JSON.parse(stored) : [];
+    try {
+      const response = await fetch(`${API_BASE_URL}/expenses`);
+      if (!response.ok) throw new Error('Failed to fetch expenses');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      return [];
+    }
   },
   
   async addExpense(expense: Expense): Promise<{ success: boolean; error?: string }> {
     try {
-      const expenses = await this.getExpenses();
-      expenses.push(expense);
-      localStorage.setItem('expenses', JSON.stringify(expenses));
+      const response = await fetch(`${API_BASE_URL}/expenses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(expense)
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to add expense');
+      }
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -63,11 +77,14 @@ const localStorageAPI: DatabaseAPI = {
   
   async updateExpense(expense: Expense): Promise<{ success: boolean; error?: string }> {
     try {
-      const expenses = await this.getExpenses();
-      const index = expenses.findIndex(e => e.id === expense.id);
-      if (index !== -1) {
-        expenses[index] = expense;
-        localStorage.setItem('expenses', JSON.stringify(expenses));
+      const response = await fetch(`${API_BASE_URL}/expenses/${expense.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(expense)
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update expense');
       }
       return { success: true };
     } catch (error) {
@@ -77,9 +94,10 @@ const localStorageAPI: DatabaseAPI = {
   
   async deleteExpense(id: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const expenses = await this.getExpenses();
-      const filtered = expenses.filter(e => e.id !== id);
-      localStorage.setItem('expenses', JSON.stringify(filtered));
+      const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete expense');
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -87,36 +105,25 @@ const localStorageAPI: DatabaseAPI = {
   },
   
   async getBudgets(): Promise<Budget[]> {
-    const stored = localStorage.getItem('budgets');
-    if (!stored) return [];
-    
-    // Convert old format to new format
-    const budgets = JSON.parse(stored);
-    if (Array.isArray(budgets)) {
-      return budgets;
-    } else {
-      // Convert object format to array format
-      return Object.entries(budgets).map(([category, amount]) => ({
-        id: `budget_${category}_${Date.now()}`,
-        category,
-        amount: amount as number,
-        currency: 'INR'
-      }));
+    try {
+      const response = await fetch(`${API_BASE_URL}/budgets`);
+      if (!response.ok) throw new Error('Failed to fetch budgets');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching budgets:', error);
+      return [];
     }
   },
   
   async setBudget(budget: Budget): Promise<{ success: boolean; error?: string }> {
     try {
-      const budgets = await this.getBudgets();
-      const index = budgets.findIndex(b => b.category === budget.category);
-      
-      if (index !== -1) {
-        budgets[index] = budget;
-      } else {
-        budgets.push(budget);
-      }
-      
-      localStorage.setItem('budgets', JSON.stringify(budgets));
+      // Backend uses POST for create/update (upsert logic in backend: INSERT OR REPLACE)
+      const response = await fetch(`${API_BASE_URL}/budgets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(budget)
+      });
+      if (!response.ok) throw new Error('Failed to set budget');
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -125,9 +132,11 @@ const localStorageAPI: DatabaseAPI = {
   
   async deleteBudget(category: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const budgets = await this.getBudgets();
-      const filtered = budgets.filter(b => b.category !== category);
-      localStorage.setItem('budgets', JSON.stringify(filtered));
+      // Use the new endpoint we added
+      const response = await fetch(`${API_BASE_URL}/budgets/category/${encodeURIComponent(category)}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete budget');
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -135,12 +144,24 @@ const localStorageAPI: DatabaseAPI = {
   },
   
   async getSetting(key: string): Promise<string | null> {
-    return localStorage.getItem(key);
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings/${key}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.value;
+    } catch (error) {
+      return null;
+    }
   },
   
   async setSetting(key: string, value: string): Promise<{ success: boolean; error?: string }> {
     try {
-      localStorage.setItem(key, value);
+      const response = await fetch(`${API_BASE_URL}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value })
+      });
+      if (!response.ok) throw new Error('Failed to save setting');
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -149,8 +170,8 @@ const localStorageAPI: DatabaseAPI = {
   
   async clearAllData(): Promise<{ success: boolean; error?: string }> {
     try {
-      localStorage.removeItem('expenses');
-      localStorage.removeItem('budgets');
+      const response = await fetch(`${API_BASE_URL}/clear-all`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to clear data');
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -158,12 +179,22 @@ const localStorageAPI: DatabaseAPI = {
   },
   
   async importData(data: { expenses?: Expense[]; budgets?: Record<string, number> }): Promise<{ success: boolean; error?: string; message?: string }> {
+    // Basic import implementation - loop and add
     try {
       if (data.expenses) {
-        localStorage.setItem('expenses', JSON.stringify(data.expenses));
+        for (const exp of data.expenses) {
+          await this.addExpense(exp);
+        }
       }
       if (data.budgets) {
-        localStorage.setItem('budgets', JSON.stringify(data.budgets));
+        for (const [category, amount] of Object.entries(data.budgets)) {
+          await this.setBudget({
+              id: `budget_${category}_${Date.now()}`,
+              category,
+              amount,
+              currency: 'INR'
+          });
+        }
       }
       return { success: true, message: 'Data imported successfully' };
     } catch (error) {
@@ -224,11 +255,12 @@ const electronAPI: DatabaseAPI = {
 // Export the appropriate API based on environment
 export const databaseAPI: DatabaseAPI = (typeof window !== 'undefined' && (window as any).electronAPI) 
   ? electronAPI 
-  : localStorageAPI;
+  : serverAPI;
 
 // Helper functions for data migration
 export const migrateFromLocalStorage = async (): Promise<void> => {
-  if (!databaseAPI.isElectron) return;
+  // Migration logic mostly relevant for Electron or moving TO server
+  // ... (keeping existing logic for now, though it might need adjustment if migrating web localStorage to server)
   
   try {
     // Get existing localStorage data
@@ -239,14 +271,14 @@ export const migrateFromLocalStorage = async (): Promise<void> => {
       const expenses = expensesData ? JSON.parse(expensesData) : [];
       const budgets = budgetsData ? JSON.parse(budgetsData) : {};
       
-      // Import to database
+      // Import to database (Server or Electron)
       const result = await databaseAPI.importData({ expenses, budgets });
       
       if (result.success) {
         // Clear localStorage after successful migration
         localStorage.removeItem('expenses');
         localStorage.removeItem('budgets');
-        console.log('Data migrated from localStorage to SQLite successfully');
+        console.log('Data migrated from localStorage successfully');
       } else {
         console.error('Failed to migrate data:', result.error);
       }

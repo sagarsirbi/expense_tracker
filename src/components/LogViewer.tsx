@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useLogger } from '../services/logger';
 import { RefreshCw, Download, Filter, AlertCircle, Info, AlertTriangle, Bug } from 'lucide-react';
 import './LogViewer.css';
@@ -47,7 +48,7 @@ export function LogViewer() {
   const downloadLogs = () => {
     componentLogger.logAction('Download Logs');
     
-    const logsText = logs.map(log => 
+    const logsText = logs.map((log: LogEntry) => 
       `${log.timestamp} [${log.level.toUpperCase()}] ${log.message} ${JSON.stringify(log, null, 2)}`
     ).join('\n');
     
@@ -60,7 +61,7 @@ export function LogViewer() {
     URL.revokeObjectURL(url);
   };
 
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = logs.filter((log: LogEntry) => {
     const matchesFilter = filter === 'all' || log.level === filter;
     const matchesSearch = searchTerm === '' || 
       log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,7 +139,7 @@ export function LogViewer() {
             {loading ? 'Loading logs...' : 'No logs found'}
           </div>
         ) : (
-          filteredLogs.map((log, index) => (
+          filteredLogs.map((log: LogEntry, index: number) => (
             <div
               key={index}
               className={`log-entry log-${log.level}`}

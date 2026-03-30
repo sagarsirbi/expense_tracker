@@ -36,9 +36,6 @@ function initDatabase() {
     
   db = new Database(dbPath);
   
-  // Enable WAL mode for better crash resilience and concurrency
-  db.pragma('journal_mode = WAL');
-  
   // Create tables if they don't exist
   db.exec(`
     CREATE TABLE IF NOT EXISTS expenses (

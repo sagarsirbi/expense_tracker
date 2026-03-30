@@ -188,6 +188,52 @@ body {
   gap: 12px;
 }
 
+.header-brand-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.header-brand-container .currency-toggle.top-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: scale(0.85);
+  transform-origin: top right;
+  z-index: 10;
+}
+
+.header-brand-container .currency-toggle.top-right .currency-toggle-black {
+  padding: 3px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.header-brand-container .currency-toggle.top-right .currency-toggle-btn {
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 28px;
+  height: 26px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.header-brand-container .currency-toggle.top-right .currency-toggle-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);
+}
+
+.header-brand-container .currency-toggle.top-right .currency-toggle-btn.active {
+  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+  color: white;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
 .money-icon {
   font-size: 48px;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));

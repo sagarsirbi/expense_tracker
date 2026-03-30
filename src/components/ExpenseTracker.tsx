@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database, X, Settings } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
 import { useLogger } from '../services/logger';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Expense {
   id: string;
@@ -20,6 +21,7 @@ export function ExpenseTracker() {
   const [categories, setCategories] = useState(['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others']);
   const [budgets, setBudgets] = useState<{[key: string]: number}>({});
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   
   // Toast/Snackbar state for insights
   const [toasts, setToasts] = useState<Array<{
@@ -29,7 +31,7 @@ export function ExpenseTracker() {
     message: string;
     suggestion: string;
   }>>([]);
-  const [showInsightsToast, setShowInsightsToast] = useState(false);
+  // const [showInsightsToast, setShowInsightsToast] = useState(false);
   
   // Monthly tracking state
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -174,6 +176,23 @@ export function ExpenseTracker() {
         await migrateFromLocalStorage();
       }
       
+      // Migrate salary data from localStorage to DB (one-time)
+      const localSalaryHistory = localStorage.getItem('salaryHistory');
+      if (localSalaryHistory) {
+        await databaseAPI.setSetting('salaryHistory', localSalaryHistory);
+        localStorage.removeItem('salaryHistory');
+      }
+      
+      // Load persisted categories
+      const savedCategories = await databaseAPI.getSetting('customCategories');
+      if (savedCategories) {
+        const parsed = JSON.parse(savedCategories);
+        const defaultCategories = ['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others'];
+        const merged = [...new Set([...defaultCategories, ...parsed])];
+        setCategories(merged);
+      }
+      setCategoriesLoaded(true);
+      
       // Load expenses and budgets from database
       await loadExpenses();
       await loadBudgets();
@@ -188,7 +207,7 @@ export function ExpenseTracker() {
       const dbExpenses = await databaseAPI.getExpenses();
       setExpenses(dbExpenses.map(exp => ({
         id: exp.id,
-        amount: exp.amount,
+        amount: String(exp.amount),
         description: exp.description,
         category: exp.category,
         date: exp.date,
@@ -215,7 +234,7 @@ export function ExpenseTracker() {
   const loadSalaryData = async () => {
     try {
       const currentMonthKey = `${selectedYear}-${selectedMonth}`;
-      const storedSalaryHistory = localStorage.getItem('salaryHistory');
+      const storedSalaryHistory = await databaseAPI.getSetting('salaryHistory');
       if (storedSalaryHistory) {
         const history = JSON.parse(storedSalaryHistory);
         setSalaryHistory(history);
@@ -233,7 +252,7 @@ export function ExpenseTracker() {
       const updatedHistory = { ...salaryHistory, [currentMonthKey]: salary };
       setSalaryHistory(updatedHistory);
       setMonthlySalary(salary);
-      localStorage.setItem('salaryHistory', JSON.stringify(updatedHistory));
+      await databaseAPI.setSetting('salaryHistory', JSON.stringify(updatedHistory));
       setShowSalaryModal(false);
     } catch (error) {
       console.error('Error saving salary data:', error);
@@ -241,14 +260,19 @@ export function ExpenseTracker() {
   };
 
   // Calculate current month savings
+  // Calculate current month savings
+  /*
   const getCurrentMonthSavings = () => {
     const currentMonthExpenses = filteredExpenses.reduce((total, expense) => {
       return total + parseFloat(expense.amount);
     }, 0);
     return monthlySalary - currentMonthExpenses;
   };
+  */
 
   // Calculate previous month savings for comparison
+  // Calculate previous month savings for comparison
+  /*
   const getPreviousMonthSavings = () => {
     const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
     const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
@@ -264,8 +288,10 @@ export function ExpenseTracker() {
     
     return prevSalary - prevMonthExpenses;
   };
+  */
 
   // Calculate savings comparison
+  /*
   const getSavingsComparison = () => {
     const currentSavings = getCurrentMonthSavings();
     const previousSavings = getPreviousMonthSavings();
@@ -280,6 +306,7 @@ export function ExpenseTracker() {
       isIncrease: difference > 0
     };
   };
+  */
 
   // Migrate existing expenses to include currency field
   useEffect(() => {
@@ -353,7 +380,7 @@ export function ExpenseTracker() {
     if (newExpense.date && newExpense.amount && newExpense.description) {
       const expenseToAdd = { 
         ...newExpense, 
-        id: Date.now().toString(), 
+        id: uuidv4(), 
         currency
       };
       
@@ -398,11 +425,16 @@ export function ExpenseTracker() {
     }
   };
 
-  const addCategory = () => {
+  const addCategory = async () => {
     if (newCategory && !categories.includes(newCategory)) {
-      setCategories([...categories, newCategory]);
+      const updated = [...categories, newCategory];
+      setCategories(updated);
       setNewCategory('');
       setShowAddCategory(false);
+      // Persist custom categories (only non-default ones)
+      const defaultCategories = ['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others'];
+      const customOnly = updated.filter(c => !defaultCategories.includes(c));
+      await databaseAPI.setSetting('customCategories', JSON.stringify(customOnly));
     }
   };
 
@@ -422,7 +454,7 @@ export function ExpenseTracker() {
   const setBudgetForCategory = async (category: string, amount: number) => {
     try {
       const budget = {
-        id: `budget_${category}_${Date.now()}`,
+        id: `budget_${category}_${uuidv4()}`,
         category,
         amount,
         currency
@@ -683,33 +715,55 @@ export function ExpenseTracker() {
               </span>
             </div>
             
-            {/* Logo and Brand */}
-            <div className="header-brand">
-              <img 
-                src="public/arthiq_logo.png" 
-                alt="Arthiq Logo" 
-                className="custom-logo"
-              />
-              <div className="brand-text">
-                <h1 className="header-title">
-                  <span className="title-main">Arthiq</span>
-                  <span className="title-accent"></span>
-                </h1>
-                <p className="header-subtitle">
-                Personal Financial Dashboard
-                </p>
-                
-                {/* Compact Exchange Rate Display */}
-                <div className="compact-rate-display">
-                  <span className="rate-text">
-                    {liveExchangeRate.isLoading ? (
-                      "Loading..."
-                    ) : liveExchangeRate.error ? (
-                      "Error"
-                    ) : (
-                      `1 Euro = ${liveExchangeRate.rate.toFixed(2)} INR`
-                    )}
-                  </span>
+            {/* Logo and Brand with Currency Toggle */}
+            <div className="header-brand-container">
+              <div className="header-brand">
+                <img 
+                  src="public/arthiq_logo.png" 
+                  alt="Arthiq Logo" 
+                  className="custom-logo"
+                />
+                <div className="brand-text">
+                  <h1 className="header-title">
+                    <span className="title-main">Arthiq</span>
+                    <span className="title-accent"></span>
+                  </h1>
+                  <p className="header-subtitle">
+                  Personal Financial Dashboard
+                  </p>
+                  
+                  {/* Compact Exchange Rate Display */}
+                  <div className="compact-rate-display">
+                    <span className="rate-text">
+                      {liveExchangeRate.isLoading ? (
+                        "Loading..."
+                      ) : liveExchangeRate.error ? (
+                        "Error"
+                      ) : (
+                        `1 Euro = ${liveExchangeRate.rate.toFixed(2)} INR`
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Currency Toggle - Top Right */}
+              <div className="currency-toggle top-right">
+                <div className="currency-toggle-black">
+                  <button
+                    className={`currency-toggle-btn${currency === 'INR' ? ' active' : ''}`}
+                    onClick={() => setCurrency('INR')}
+                    type="button"
+                  >
+                    IN
+                  </button>
+                  <button
+                    className={`currency-toggle-btn${currency === 'EUR' ? ' active' : ''}`}
+                    onClick={() => setCurrency('EUR')}
+                    type="button"
+                  >
+                    EU
+                  </button>
                 </div>
               </div>
             </div>
@@ -745,26 +799,6 @@ export function ExpenseTracker() {
               >
                 <ChevronRight size={16} />
               </button>
-            </div>
-
-            {/* Currency Toggle */}
-            <div className="currency-toggle">
-              <div className="currency-toggle-black">
-                <button
-                  className={`currency-toggle-btn${currency === 'INR' ? ' active' : ''}`}
-                  onClick={() => setCurrency('INR')}
-                  type="button"
-                >
-                  IN
-                </button>
-                <button
-                  className={`currency-toggle-btn${currency === 'EUR' ? ' active' : ''}`}
-                  onClick={() => setCurrency('EUR')}
-                  type="button"
-                >
-                  EU
-                </button>
-              </div>
             </div>
 
             {/* Action Buttons */}

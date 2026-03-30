@@ -28,6 +28,8 @@ let db;
 
 try {
   db = new Database(dbPath);
+  // Enable WAL mode for better concurrency and crash resilience
+  db.pragma('journal_mode = WAL');
   logger.info('Connected to SQLite database', { dbPath });
 } catch (error) {
   logger.error('Database connection error', error);
@@ -42,9 +44,21 @@ db.exec(`
     category TEXT NOT NULL,
     description TEXT NOT NULL,
     amount REAL NOT NULL,
+    currency TEXT DEFAULT 'INR',
     userId TEXT DEFAULT 'default'
   )
 `);
+
+// Migration: add currency column if missing (for existing databases)
+try {
+  const columns = db.prepare("PRAGMA table_info(expenses)").all();
+  if (!columns.find(c => c.name === 'currency')) {
+    db.exec(`ALTER TABLE expenses ADD COLUMN currency TEXT DEFAULT 'INR'`);
+    logger.info('Migrated expenses table: added currency column');
+  }
+} catch (e) {
+  logger.warn('Currency column migration check:', e.message);
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS budgets (
@@ -311,9 +325,10 @@ app.post('/api/expenses', (req, res) => {
       return res.status(400).json({ error: 'Missing required fields', correlationId: req.correlationId });
     }
 
+    const currency = req.body.currency || 'INR';
     const startTime = Date.now();
-    const stmt = db.prepare('INSERT INTO expenses (id, date, category, description, amount, userId) VALUES (?, ?, ?, ?, ?, ?)');
-    stmt.run(id, date, category, description, amount, 'default');
+    const stmt = db.prepare('INSERT INTO expenses (id, date, category, description, amount, currency, userId) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    stmt.run(id, date, category, description, amount, currency, 'default');
     const duration = Date.now() - startTime;
     
     req.logger.logDatabaseOperation('INSERT', 'expenses', { 
@@ -328,10 +343,58 @@ app.post('/api/expenses', (req, res) => {
       date
     });
 
-    res.status(201).json({ id, date, category, description, amount, userId: 'default' });
+    res.status(201).json({ id, date, category, description, amount, currency: req.body.currency || 'INR', userId: 'default' });
   } catch (error) {
     req.logger.logError(error, { endpoint: '/api/expenses', method: 'POST', body: req.body });
     res.status(500).json({ error: error.message, correlationId: req.correlationId });
+  }
+});
+
+/**
+ * @swagger
+ * /api/expenses/{id}:
+ *   put:
+ *     summary: Update an existing expense
+ *     tags: [Expenses]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Expense'
+ *     responses:
+ *       200:
+ *         description: Expense updated
+ *       404:
+ *         description: Expense not found
+ */
+app.put('/api/expenses/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, category, description, amount, currency } = req.body;
+
+    if (!date || !category || !description || amount === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const stmt = db.prepare(
+      'UPDATE expenses SET date = ?, category = ?, description = ?, amount = ?, currency = ? WHERE id = ? AND userId = ?'
+    );
+    const result = stmt.run(date, category, description, amount, currency || 'INR', id, 'default');
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+
+    res.json({ id, date, category, description, amount, currency: currency || 'INR', userId: 'default' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -487,16 +550,19 @@ app.get('/api/budgets', (req, res) => {
  */
 app.post('/api/budgets', (req, res) => {
   try {
-    const { id, category, amount, month } = req.body;
+    const { id, category, amount, month, currency } = req.body;
 
-    if (!id || !category || amount === undefined || !month) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!id || !category || amount === undefined) {
+      return res.status(400).json({ error: 'Missing required fields (id, category, amount)' });
     }
 
-    const stmt = db.prepare('INSERT OR REPLACE INTO budgets (id, category, amount, month, userId) VALUES (?, ?, ?, ?, ?)');
-    stmt.run(id, category, amount, month, 'default');
+    // Default month to current month if not provided
+    const budgetMonth = month || new Date().toISOString().slice(0, 7);
 
-    res.status(201).json({ id, category, amount, month, userId: 'default' });
+    const stmt = db.prepare('INSERT OR REPLACE INTO budgets (id, category, amount, month, userId) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(id, category, amount, budgetMonth, 'default');
+
+    res.status(201).json({ id, category, amount, month: budgetMonth, currency: currency || 'INR', userId: 'default' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -551,6 +617,144 @@ app.delete('/api/budgets/:id', (req, res) => {
     }
 
     res.json({ message: 'Budget deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/budgets/category/{category}:
+ *   delete:
+ *     summary: Delete a budget by category
+ *     tags: [Budgets]
+ *     parameters:
+ *       - in: path
+ *         name: category
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The budget category
+ *     responses:
+ *       200:
+ *         description: Budget deleted successfully
+ *       404:
+ *         description: Budget not found
+ */
+app.delete('/api/budgets/category/:category', (req, res) => {
+  try {
+    const { category } = req.params;
+    const stmt = db.prepare('DELETE FROM budgets WHERE category = ? AND userId = ?');
+    const result = stmt.run(category, 'default');
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Budget not found' });
+    }
+
+    res.json({ message: 'Budget deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clear all data endpoint
+app.delete('/api/clear-all', (req, res) => {
+  try {
+    db.exec('DELETE FROM expenses WHERE userId = ?', ['default']);
+    db.exec('DELETE FROM budgets WHERE userId = ?', ['default']);
+    res.json({ success: true, message: 'All data cleared' });
+  } catch (error) {
+    // Fallback: use prepared statements
+    try {
+      db.prepare('DELETE FROM expenses WHERE userId = ?').run('default');
+      db.prepare('DELETE FROM budgets WHERE userId = ?').run('default');
+      res.json({ success: true, message: 'All data cleared' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// Create settings table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    userId TEXT DEFAULT 'default'
+  )
+`);
+
+/**
+ * @swagger
+ * /api/settings/{key}:
+ *   get:
+ *     summary: Get a setting by key
+ *     tags: [Settings]
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Setting value
+ */
+app.get('/api/settings/:key', (req, res) => {
+  try {
+    const { key } = req.params;
+    const stmt = db.prepare('SELECT value FROM settings WHERE key = ? AND userId = ?');
+    const result = stmt.get(key, 'default');
+    res.json({ 
+      key, 
+      value: result ? result.value : null 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings:
+ *   post:
+ *     summary: Set a setting
+ *     tags: [Settings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [key, value]
+ *             properties:
+ *               key:
+ *                 type: string
+ *               value:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Setting saved
+ */
+app.post('/api/settings', (req, res) => {
+  try {
+    const { key, value } = req.body;
+    
+    if (!key || value === undefined) {
+      return res.status(400).json({ error: 'Missing key or value' });
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO settings (key, value, userId) 
+      VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET 
+        value = excluded.value,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    
+    stmt.run(key, value, 'default');
+    res.json({ success: true, key, value });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

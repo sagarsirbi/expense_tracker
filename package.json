@@ -11,9 +11,10 @@
     "preview": "vite preview",
     "api-server": "node server/index.js",
     "api-dev": "nodemon server/index.js",
-    "dev-full": "concurrently \"npm run dev\" \"npm run api-dev\"",
-    "electron": "electron .",
-    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5175 && electron .\"",
+
+    "dev-full": "npm rebuild better-sqlite3 && concurrently \"npm run dev\" \"npm run api-dev\"",
+    "electron": "npx @electron/rebuild -f -w better-sqlite3 && electron .",
+    "electron-dev": "npx @electron/rebuild -f -w better-sqlite3 && concurrently \"npm run dev\" \"wait-on http://localhost:5175 && electron .\"",
     "electron-build": "npm run build && electron-builder",
     "electron-build-win": "npm run build && electron-builder --win",
     "electron-build-mac": "npm run build && electron-builder --mac",
@@ -91,16 +92,13 @@
       }
     ],
     "win": {
-      "target": "nsis",
-      "icon": "electron/assets/icon.ico"
+      "target": "nsis"
     },
     "mac": {
-      "target": "dmg",
-      "icon": "electron/assets/icon.icns"
+      "target": "dmg"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "electron/assets/icon.png"
+      "target": "AppImage"
     },
     "nsis": {
       "oneClick": false,

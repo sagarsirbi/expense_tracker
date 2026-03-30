@@ -41,10 +41,11 @@ function updateDatabaseSchema() {
       const passwordHash = bcrypt.hashSync('admin123', 12);
       const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      db.exec(`
+      const insertStmt = db.prepare(`
         INSERT INTO users (id, email, password_hash, display_name, role, is_active, created_at, updated_at)
-        VALUES ('${userId}', '${email}', '${passwordHash}', 'Demo Admin', 'admin', 1, datetime('now'), datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `);
+      insertStmt.run(userId, email, passwordHash, 'Demo Admin', 'admin', 1);
       
       console.log('✅ Demo admin created!');
       console.log('📧 Email: admin@demo.com');
