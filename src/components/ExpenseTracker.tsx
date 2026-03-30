@@ -314,8 +314,9 @@ export function ExpenseTracker() {
   };
 
   const getBudgetStatus = (category: string) => {
-    const budget = budgets[category];
-    if (!budget) return null;
+    const rawBudget = budgets[category];
+    if (!rawBudget) return null;
+    const budget = convertAmount(rawBudget, 'INR');
     const spent = getCurrentMonthExpenses(category);
     const percentage = (spent / budget) * 100;
     return {
@@ -326,7 +327,7 @@ export function ExpenseTracker() {
   };
 
   const monthlyBudgetSummary = () => {
-    const totalBudget = Object.values(budgets).reduce((sum, budget) => sum + budget, 0);
+    const totalBudget = Object.values(budgets).reduce((sum, b) => sum + convertAmount(b, 'INR'), 0);
     const budgetPercentage = totalBudget > 0 ? (totalExpenses / totalBudget) * 100 : 0;
     return {
       totalBudget, totalSpent: totalExpenses, remaining: Math.max(totalBudget - totalExpenses, 0),
@@ -530,6 +531,7 @@ export function ExpenseTracker() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Monthly Total</p>
                 <p className="text-xl font-bold mt-1">{formatCurrency(totalExpenses)}</p>
+                {currency === 'EUR' && <p className="text-[10px] text-muted-foreground">converted from INR</p>}
               </div>
               <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center">
                 <Wallet className="h-5 w-5 text-emerald-600" />
@@ -596,30 +598,33 @@ export function ExpenseTracker() {
             </Card>
           )}
 
-          {monthlySalary > 0 && (
+          {monthlySalary > 0 && (() => {
+            const convertedSalary = convertAmount(monthlySalary, salaryCurrency);
+            return (
             <Card className="border-l-4 border-l-indigo-500">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Monthly Savings</p>
-                  <p className={cn("text-xl font-bold mt-1", monthlySalary > totalExpenses ? 'text-emerald-600' : 'text-red-600')}>
-                    {formatCurrency(monthlySalary - totalExpenses)}
+                  <p className={cn("text-xl font-bold mt-1", convertedSalary > totalExpenses ? 'text-emerald-600' : 'text-red-600')}>
+                    {formatCurrency(convertedSalary - totalExpenses)}
                   </p>
                   <Badge variant="secondary" className={cn("mt-1",
-                    monthlySalary > totalExpenses ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                    convertedSalary > totalExpenses ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                   )}>
-                    {monthlySalary > totalExpenses
-                      ? `${(((monthlySalary - totalExpenses) / monthlySalary) * 100).toFixed(0)}% saved`
-                      : `${((totalExpenses - monthlySalary) / monthlySalary * 100).toFixed(0)}% overspent`}
+                    {convertedSalary > totalExpenses
+                      ? `${(((convertedSalary - totalExpenses) / convertedSalary) * 100).toFixed(0)}% saved`
+                      : `${((totalExpenses - convertedSalary) / convertedSalary * 100).toFixed(0)}% overspent`}
                   </Badge>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-indigo-50 flex items-center justify-center">
-                  {monthlySalary > totalExpenses
+                  {convertedSalary > totalExpenses
                     ? <PiggyBank className="h-5 w-5 text-indigo-600" />
                     : <ArrowDownRight className="h-5 w-5 text-red-500" />}
                 </div>
               </CardContent>
             </Card>
-          )}
+            );
+          })()}
         </div>
 
         {/* Two Column Layout */}
@@ -861,7 +866,7 @@ export function ExpenseTracker() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Input type="number" placeholder="Budget amount" className="h-8"
+                    <Input type="number" placeholder={`Budget amount (${getCurrencySymbol('INR')})`} className="h-8"
                       defaultValue={budgets[category] || ''}
                       onBlur={(e) => {
                         const amount = parseFloat(e.target.value);

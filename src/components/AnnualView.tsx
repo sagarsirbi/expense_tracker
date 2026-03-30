@@ -53,14 +53,40 @@ export function AnnualView() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState<'INR' | 'EUR'>('INR');
+  const [exchangeRate, setExchangeRate] = useState<number>(0.011);
   const [categoryTimeFilter, setCategoryTimeFilter] = useState<'annual' | string>('annual');
 
   const getCurrencySymbol = () => currency === 'INR' ? '₹' : '€';
+
+  const convertAmount = (amount: number, fromCurrency: 'INR' | 'EUR' = 'INR') => {
+    if (currency === fromCurrency) return amount;
+    if (currency === 'EUR' && fromCurrency === 'INR') return amount * exchangeRate;
+    if (currency === 'INR' && fromCurrency === 'EUR') return amount / exchangeRate;
+    return amount;
+  };
+
   const formatCurrency = (amount: number) => `${getCurrencySymbol()}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatAxisTick = (v: number) => {
+    const sym = getCurrencySymbol();
+    if (Math.abs(v) >= 100000) return `${sym}${(v / 100000).toFixed(1)}L`;
+    if (Math.abs(v) >= 1000) return `${sym}${(v / 1000).toFixed(0)}k`;
+    return `${sym}${v}`;
+  };
 
   useEffect(() => {
     loadData();
+    fetchExchangeRate();
   }, []);
+
+  const fetchExchangeRate = async () => {
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/INR');
+      const data = await response.json();
+      setExchangeRate(data.rates.EUR);
+    } catch {
+      setExchangeRate(0.011);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -98,9 +124,9 @@ export function AnnualView() {
   const monthlyData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const monthExpenses = yearExpenses.filter(exp => new Date(exp.date).getMonth() === i);
-      const totalExpense = monthExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || '0'), 0);
+      const totalExpense = monthExpenses.reduce((sum, exp) => sum + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR'), 0);
       const salaryKey = `${selectedYear}-${i}`;
-      const salary = salaryHistory[salaryKey] || 0;
+      const salary = convertAmount(salaryHistory[salaryKey] || 0, 'INR');
       const savings = salary - totalExpense;
       return {
         month: MONTH_SHORT[i],
@@ -114,7 +140,7 @@ export function AnnualView() {
         entryCount: monthExpenses.length
       };
     });
-  }, [yearExpenses, salaryHistory, selectedYear]);
+  }, [yearExpenses, salaryHistory, selectedYear, currency, exchangeRate]);
 
   // Annual totals
   const annualTotals = useMemo(() => {
@@ -149,7 +175,7 @@ export function AnnualView() {
     }
     const totals: Record<string, number> = {};
     filtered.forEach(exp => {
-      totals[exp.category] = (totals[exp.category] || 0) + parseFloat(exp.amount || '0');
+      totals[exp.category] = (totals[exp.category] || 0) + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR');
     });
     const total = Object.values(totals).reduce((s, v) => s + v, 0);
     return Object.entries(totals)
@@ -160,7 +186,7 @@ export function AnnualView() {
         color: getCategoryColor(category)
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [yearExpenses, categoryTimeFilter]);
+  }, [yearExpenses, categoryTimeFilter, currency, exchangeRate]);
 
   // Best and worst months
   const bestMonth = useMemo(() => {
@@ -345,7 +371,7 @@ export function AnnualView() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }} />
                   <YAxis stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }}
-                    tickFormatter={(v) => `${getCurrencySymbol()}${(v / 1000).toFixed(0)}k`} />
+                    tickFormatter={formatAxisTick} />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     formatter={(value: number, name: string) => [formatCurrency(value), name === 'expense' ? 'Expenses' : 'Savings']}
@@ -378,7 +404,7 @@ export function AnnualView() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }} />
                   <YAxis stroke="hsl(var(--muted-foreground))" style={{ fontSize: '12px' }}
-                    tickFormatter={(v) => `${getCurrencySymbol()}${(v / 1000).toFixed(0)}k`} />
+                    tickFormatter={formatAxisTick} />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     formatter={(value: number, name: string) => [formatCurrency(value), name]}
