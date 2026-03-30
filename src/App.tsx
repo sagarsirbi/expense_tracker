@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ExpenseTracker } from './components/ExpenseTracker';
 import { Database } from './components/Database';
+import { AnnualView } from './components/AnnualView';
 import { LogViewer } from './components/LogViewer';
 import ErrorBoundary from './components/ErrorBoundary';
 function App() {
@@ -31,6 +32,13 @@ function App() {
           <Route path="/logs" element={
             <ErrorBoundary componentName="LogViewer">
               <LogViewer />
+            </ErrorBoundary>
+          } />
+          
+          {/* Annual view route */}
+          <Route path="/annual" element={
+            <ErrorBoundary componentName="AnnualView">
+              <AnnualView />
             </ErrorBoundary>
           } />
           

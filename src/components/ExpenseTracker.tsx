@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { Wallet, Trash2, BarChart3, Receipt, TrendingUp, FolderPlus, Target, ChevronLeft, ChevronRight, TableProperties, X, SlidersHorizontal, CirclePlus, PiggyBank, CalendarDays, Banknote, Lightbulb, LayoutGrid, ArrowUpRight, ArrowDownRight, Sparkles } from 'lucide-react';
+import { Wallet, Trash2, BarChart3, Receipt, TrendingUp, FolderPlus, Target, ChevronLeft, ChevronRight, TableProperties, X, SlidersHorizontal, CirclePlus, PiggyBank, CalendarDays, Banknote, LayoutGrid, ArrowDownRight, Sparkles } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage } from '../services/database';
@@ -503,6 +503,12 @@ export function ExpenseTracker() {
                     <Link to={`/${getMonthName(selectedMonth).toLowerCase()}/database`}>
                       <TableProperties className="h-3.5 w-3.5" />
                       Database
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild className="border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                    <Link to="/annual">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      Annual
                     </Link>
                   </Button>
                   {filteredExpenses.length > 0 && (
