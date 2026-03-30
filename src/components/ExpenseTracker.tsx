@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
-import { Wallet, Trash2, BarChart3, Receipt, TrendingUp, FolderPlus, Target, ChevronLeft, ChevronRight, TableProperties, X, SlidersHorizontal, CirclePlus, PiggyBank, CalendarDays, Banknote, LayoutGrid, ArrowDownRight, Sparkles } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Wallet, Trash2, BarChart3, Receipt, TrendingUp, FolderPlus, Target, ChevronLeft, ChevronRight, TableProperties, X, SlidersHorizontal, CirclePlus, PiggyBank, CalendarDays, Banknote, LayoutGrid, ArrowDownRight, Sparkles, IndianRupee, Euro } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Link } from 'react-router-dom';
 import { databaseAPI, migrateFromLocalStorage } from '../services/database';
 import { useLogger } from '../services/logger';
@@ -33,6 +33,7 @@ export function ExpenseTracker() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState(['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others']);
   const [budgets, setBudgets] = useState<{[key: string]: number}>({});
+  const [budgetCurrencies, setBudgetCurrencies] = useState<{[key: string]: 'INR' | 'EUR'}>({});
   const [showBudgetModal, setShowBudgetModal] = useState(false);
 
   
@@ -70,6 +71,7 @@ export function ExpenseTracker() {
   const [salaryCurrency, setSalaryCurrency] = useState<'INR' | 'EUR'>('INR');
   const [showSalaryModal, setShowSalaryModal] = useState(false);
   const [salaryHistory, setSalaryHistory] = useState<{[key: string]: number}>({});
+  const [salaryCurrencyHistory, setSalaryCurrencyHistory] = useState<{[key: string]: 'INR' | 'EUR'}>({});
 
   const [newExpense, setNewExpense] = useState({
     date: '',
@@ -173,8 +175,13 @@ export function ExpenseTracker() {
     try {
       const dbBudgets = await databaseAPI.getBudgets();
       const budgetObj: {[key: string]: number} = {};
-      dbBudgets.forEach(budget => { budgetObj[budget.category] = budget.amount; });
+      const currObj: {[key: string]: 'INR' | 'EUR'} = {};
+      dbBudgets.forEach(budget => {
+        budgetObj[budget.category] = budget.amount;
+        currObj[budget.category] = (budget.currency as 'INR' | 'EUR') || 'INR';
+      });
       setBudgets(budgetObj);
+      setBudgetCurrencies(currObj);
     } catch (error) { console.error('Error loading budgets:', error); }
   };
 
@@ -187,6 +194,12 @@ export function ExpenseTracker() {
         setSalaryHistory(history);
         setMonthlySalary(history[currentMonthKey] || 0);
       }
+      const storedSalaryCurrencyHistory = await databaseAPI.getSetting('salaryCurrencyHistory');
+      if (storedSalaryCurrencyHistory) {
+        const currHistory = JSON.parse(storedSalaryCurrencyHistory);
+        setSalaryCurrencyHistory(currHistory);
+        setSalaryCurrency(currHistory[currentMonthKey] || 'INR');
+      }
     } catch (error) { console.error('Error loading salary data:', error); }
   };
 
@@ -197,6 +210,9 @@ export function ExpenseTracker() {
       setSalaryHistory(updatedHistory);
       setMonthlySalary(salary);
       await databaseAPI.setSetting('salaryHistory', JSON.stringify(updatedHistory));
+      const updatedCurrHistory = { ...salaryCurrencyHistory, [currentMonthKey]: salaryCurrency };
+      setSalaryCurrencyHistory(updatedCurrHistory);
+      await databaseAPI.setSetting('salaryCurrencyHistory', JSON.stringify(updatedCurrHistory));
       setShowSalaryModal(false);
     } catch (error) { console.error('Error saving salary data:', error); }
   };
@@ -286,11 +302,14 @@ export function ExpenseTracker() {
     } catch (error) { console.error('Error deleting expense:', error); }
   };
 
-  const setBudgetForCategory = async (category: string, amount: number) => {
+  const setBudgetForCategory = async (category: string, amount: number, budgetCurrency: 'INR' | 'EUR') => {
     try {
-      const budget = { id: `budget_${category}_${uuidv4()}`, category, amount, currency };
+      const budget = { id: `budget_${category}_${uuidv4()}`, category, amount, currency: budgetCurrency };
       const result = await databaseAPI.setBudget(budget);
-      if (result.success) setBudgets({ ...budgets, [category]: amount });
+      if (result.success) {
+        setBudgets({ ...budgets, [category]: amount });
+        setBudgetCurrencies({ ...budgetCurrencies, [category]: budgetCurrency });
+      }
     } catch (error) { console.error('Error setting budget:', error); }
   };
 
@@ -316,7 +335,8 @@ export function ExpenseTracker() {
   const getBudgetStatus = (category: string) => {
     const rawBudget = budgets[category];
     if (!rawBudget) return null;
-    const budget = convertAmount(rawBudget, 'INR');
+    const budgetCurr = budgetCurrencies[category] || 'INR';
+    const budget = convertAmount(rawBudget, budgetCurr);
     const spent = getCurrentMonthExpenses(category);
     const percentage = (spent / budget) * 100;
     return {
@@ -327,7 +347,7 @@ export function ExpenseTracker() {
   };
 
   const monthlyBudgetSummary = () => {
-    const totalBudget = Object.values(budgets).reduce((sum, b) => sum + convertAmount(b, 'INR'), 0);
+    const totalBudget = Object.entries(budgets).reduce((sum, [cat, b]) => sum + convertAmount(b, budgetCurrencies[cat] || 'INR'), 0);
     const budgetPercentage = totalBudget > 0 ? (totalExpenses / totalBudget) * 100 : 0;
     return {
       totalBudget, totalSpent: totalExpenses, remaining: Math.max(totalBudget - totalExpenses, 0),
@@ -423,6 +443,34 @@ export function ExpenseTracker() {
 
   const chartData = getChartData();
 
+  // Monthly trend data (expense vs savings for each month of selected year)
+  const monthlyTrendData = (() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months.map((m, i) => {
+      const monthExps = expenses.filter(exp => {
+        const d = new Date(exp.date);
+        return d.getFullYear() === selectedYear && d.getMonth() === i;
+      });
+      const expense = monthExps.reduce((sum, exp) => sum + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR'), 0);
+      const salaryKey = `${selectedYear}-${i}`;
+      const salCurr = salaryCurrencyHistory[salaryKey] || 'INR';
+      const salary = convertAmount(salaryHistory[salaryKey] || 0, salCurr);
+      const savings = salary > 0 ? salary - expense : 0;
+      return { month: m, expense, savings, salary };
+    });
+  })();
+
+  // Category pie chart data for current month
+  const categoryPieData = categoryTotals
+    .sort((a, b) => b.total - a.total)
+    .map(cat => ({
+      name: cat.category,
+      value: cat.total,
+      color: getColorForCategory(cat.category)
+    }));
+
+  const PIE_COLORS = ['#059669', '#0284c7', '#7c3aed', '#db2777', '#d97706', '#dc2626', '#4f46e5', '#0891b2', '#ea580c', '#64748b'];
+
   const toastColorMap: Record<string, { bg: string; border: string; icon: string }> = {
     success: { bg: 'bg-emerald-50', border: 'border-l-emerald-500', icon: '✓' },
     warning: { bg: 'bg-red-50', border: 'border-l-red-500', icon: '!' },
@@ -463,18 +511,18 @@ export function ExpenseTracker() {
                     <Button
                       size="sm"
                       variant={currency === 'INR' ? 'secondary' : 'ghost'}
-                      className={cn("rounded-full h-7 px-3 text-xs font-semibold", currency === 'INR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
+                      className={cn("rounded-full h-7 px-2.5 text-xs font-semibold", currency === 'INR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
                       onClick={() => setCurrency('INR')}
                     >
-                      IN
+                      <IndianRupee className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="sm"
                       variant={currency === 'EUR' ? 'secondary' : 'ghost'}
-                      className={cn("rounded-full h-7 px-3 text-xs font-semibold", currency === 'EUR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
+                      className={cn("rounded-full h-7 px-2.5 text-xs font-semibold", currency === 'EUR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
                       onClick={() => setCurrency('EUR')}
                     >
-                      EU
+                      <Euro className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -848,11 +896,12 @@ export function ExpenseTracker() {
         <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Set Category Budgets</DialogTitle>
-            <DialogDescription>Set monthly budget limits for each category.</DialogDescription>
+            <DialogDescription>Set monthly budget limits for each category. Choose currency per category.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {categories.map(category => {
               const budgetStatus = getBudgetStatus(category);
+              const budgetCurr = budgetCurrencies[category] || 'INR';
               return (
                 <div key={category} className="p-3 bg-muted/50 rounded-lg border-l-4 border-l-emerald-500">
                   <div className="flex justify-between items-center mb-2">
@@ -866,14 +915,24 @@ export function ExpenseTracker() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Input type="number" placeholder={`Budget amount (${getCurrencySymbol('INR')})`} className="h-8"
+                    <div className="inline-flex rounded-full bg-emerald-900 p-0.5 shrink-0">
+                      <button type="button"
+                        className={cn("rounded-full h-6 px-1.5 flex items-center justify-center transition-colors",
+                          budgetCurr === 'INR' ? 'bg-white text-emerald-900' : 'text-emerald-100 hover:bg-emerald-800')}
+                        onClick={() => setBudgetCurrencies({ ...budgetCurrencies, [category]: 'INR' })}><IndianRupee className="h-3 w-3" /></button>
+                      <button type="button"
+                        className={cn("rounded-full h-6 px-1.5 flex items-center justify-center transition-colors",
+                          budgetCurr === 'EUR' ? 'bg-white text-emerald-900' : 'text-emerald-100 hover:bg-emerald-800')}
+                        onClick={() => setBudgetCurrencies({ ...budgetCurrencies, [category]: 'EUR' })}><Euro className="h-3 w-3" /></button>
+                    </div>
+                    <Input type="number" placeholder={`Amount (${getCurrencySymbol(budgetCurr)})`} className="h-8 flex-1"
                       defaultValue={budgets[category] || ''}
                       onBlur={(e) => {
                         const amount = parseFloat(e.target.value);
-                        if (amount > 0) setBudgetForCategory(category, amount);
+                        if (amount > 0) setBudgetForCategory(category, amount, budgetCurr);
                       }} />
                     {budgetStatus && (
-                      <Progress value={budgetStatus.percentage} className={cn("w-24",
+                      <Progress value={budgetStatus.percentage} className={cn("w-20 shrink-0",
                         budgetStatus.status === 'over' ? '[&>div]:bg-red-500' : budgetStatus.status === 'warning' ? '[&>div]:bg-amber-500' : '[&>div]:bg-emerald-500'
                       )} />
                     )}
@@ -881,6 +940,22 @@ export function ExpenseTracker() {
                 </div>
               );
             })}
+
+            {/* Add New Category */}
+            <Separator />
+            <div className="p-3 bg-muted/30 rounded-lg border-2 border-dashed border-emerald-200">
+              <p className="text-sm font-medium mb-2 text-muted-foreground">Add New Category</p>
+              <div className="flex gap-2">
+                <Input placeholder="Category name" value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+                  className="h-8 flex-1" />
+                <Button size="sm" className="h-8" onClick={addCategory}
+                  disabled={!newCategory || categories.includes(newCategory)}>
+                  <FolderPlus className="h-3.5 w-3.5 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={() => setShowBudgetModal(false)}>Done</Button>

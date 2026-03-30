@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, CalendarRange, Wallet, PiggyBank, TrendingUp, TrendingDown,
-  BarChart3, LayoutGrid, ChevronLeft, ChevronRight, Percent, ArrowUpRight, ArrowDownRight
+  BarChart3, LayoutGrid, ChevronLeft, ChevronRight, Percent, ArrowUpRight, ArrowDownRight,
+  IndianRupee, Euro
 } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -50,6 +51,7 @@ function getCategoryColor(category: string): string {
 export function AnnualView() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [salaryHistory, setSalaryHistory] = useState<Record<string, number>>({});
+  const [salaryCurrencyHistory, setSalaryCurrencyHistory] = useState<Record<string, 'INR' | 'EUR'>>({});
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState<'INR' | 'EUR'>('INR');
@@ -91,15 +93,17 @@ export function AnnualView() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [dbExpenses, storedSalary] = await Promise.all([
+      const [dbExpenses, storedSalary, storedSalaryCurrency] = await Promise.all([
         databaseAPI.getExpenses(),
-        databaseAPI.getSetting('salaryHistory')
+        databaseAPI.getSetting('salaryHistory'),
+        databaseAPI.getSetting('salaryCurrencyHistory')
       ]);
       setExpenses(dbExpenses.map(exp => ({
         id: exp.id, amount: String(exp.amount), description: exp.description,
         category: exp.category, date: exp.date, currency: (exp.currency as 'INR' | 'EUR') || 'INR'
       })));
       if (storedSalary) setSalaryHistory(JSON.parse(storedSalary));
+      if (storedSalaryCurrency) setSalaryCurrencyHistory(JSON.parse(storedSalaryCurrency));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -126,7 +130,8 @@ export function AnnualView() {
       const monthExpenses = yearExpenses.filter(exp => new Date(exp.date).getMonth() === i);
       const totalExpense = monthExpenses.reduce((sum, exp) => sum + convertAmount(parseFloat(exp.amount || '0'), exp.currency || 'INR'), 0);
       const salaryKey = `${selectedYear}-${i}`;
-      const salary = convertAmount(salaryHistory[salaryKey] || 0, 'INR');
+      const salaryCurr = salaryCurrencyHistory[salaryKey] || 'INR';
+      const salary = convertAmount(salaryHistory[salaryKey] || 0, salaryCurr);
       const savings = salary - totalExpense;
       return {
         month: MONTH_SHORT[i],
@@ -140,7 +145,7 @@ export function AnnualView() {
         entryCount: monthExpenses.length
       };
     });
-  }, [yearExpenses, salaryHistory, selectedYear, currency, exchangeRate]);
+  }, [yearExpenses, salaryHistory, salaryCurrencyHistory, selectedYear, currency, exchangeRate]);
 
   // Annual totals
   const annualTotals = useMemo(() => {
@@ -231,11 +236,11 @@ export function AnnualView() {
               {/* Currency Toggle */}
               <div className="inline-flex rounded-full bg-emerald-900 p-0.5">
                 <Button size="sm" variant={currency === 'INR' ? 'secondary' : 'ghost'}
-                  className={cn("rounded-full h-7 px-3 text-xs font-semibold", currency === 'INR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
-                  onClick={() => setCurrency('INR')}>IN</Button>
+                  className={cn("rounded-full h-7 px-2.5 text-xs font-semibold", currency === 'INR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
+                  onClick={() => setCurrency('INR')}><IndianRupee className="h-3.5 w-3.5" /></Button>
                 <Button size="sm" variant={currency === 'EUR' ? 'secondary' : 'ghost'}
-                  className={cn("rounded-full h-7 px-3 text-xs font-semibold", currency === 'EUR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
-                  onClick={() => setCurrency('EUR')}>EU</Button>
+                  className={cn("rounded-full h-7 px-2.5 text-xs font-semibold", currency === 'EUR' ? 'bg-white text-emerald-900 hover:bg-white' : 'text-emerald-100 hover:bg-emerald-800')}
+                  onClick={() => setCurrency('EUR')}><Euro className="h-3.5 w-3.5" /></Button>
               </div>
               {/* Year Navigation */}
               <div className="flex items-center gap-2">
