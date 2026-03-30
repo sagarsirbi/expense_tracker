@@ -2,7 +2,7 @@
 import { Plus, Trash2, PieChart, Calendar, TrendingUp, Tag, DollarSign, ChevronLeft, ChevronRight, Database, X, Settings } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
-import { databaseAPI, migrateFromLocalStorage, isElectronApp } from '../services/database';
+import { databaseAPI, migrateFromLocalStorage } from '../services/database';
 import { useLogger } from '../services/logger';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -141,7 +141,7 @@ export function ExpenseTracker() {
 
   // Fetch exchange rate on component mount and initialize database
   useEffect(() => {
-    componentLogger.logMount({ currency, isElectronApp: isElectronApp() });
+    componentLogger.logMount({ currency });
     fetchExchangeRate();
     fetchLiveExchangeRate();
     initializeDatabase();
@@ -170,11 +170,8 @@ export function ExpenseTracker() {
     try {
       componentLogger.info('Initializing database');
       
-      // Migrate from localStorage if in Electron and localStorage has data
-      if (isElectronApp()) {
-        componentLogger.info('Running in Electron, attempting migration from localStorage');
-        await migrateFromLocalStorage();
-      }
+      // Migrate from localStorage if it has data
+      await migrateFromLocalStorage();
       
       // Migrate salary data from localStorage to DB (one-time)
       const localSalaryHistory = localStorage.getItem('salaryHistory');

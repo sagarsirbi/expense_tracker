@@ -2,7 +2,6 @@
   "name": "arthiq",
   "private": true,
   "version": "1.0.0",
-  "main": "electron/main.js",
   "homepage": "./",
   "scripts": {
     "dev": "vite",
@@ -11,14 +10,7 @@
     "preview": "vite preview",
     "api-server": "node server/index.js",
     "api-dev": "nodemon server/index.js",
-
-    "dev-full": "npm rebuild better-sqlite3 && concurrently \"npm run dev\" \"npm run api-dev\"",
-    "electron": "npx @electron/rebuild -f -w better-sqlite3 && electron .",
-    "electron-dev": "npx @electron/rebuild -f -w better-sqlite3 && concurrently \"npm run dev\" \"wait-on http://localhost:5175 && electron .\"",
-    "electron-build": "npm run build && electron-builder",
-    "electron-build-win": "npm run build && electron-builder --win",
-    "electron-build-mac": "npm run build && electron-builder --mac",
-    "electron-build-linux": "npm run build && electron-builder --linux"
+    "dev-full": "concurrently \"npm run dev\" \"npm run api-dev\""
   },
   "dependencies": {
     "@types/cors": "^2.8.19",
@@ -55,8 +47,6 @@
     "autoprefixer": "^10.4.21",
     "babel-plugin-react-compiler": "^19.1.0-rc.3",
     "concurrently": "^9.2.1",
-    "electron": "^38.2.0",
-    "electron-builder": "^26.0.12",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.22",
@@ -65,44 +55,9 @@
     "tailwindcss": "^4.1.14",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
-    "vite": "npm:rolldown-vite@7.1.14",
-    "wait-on": "^9.0.1"
+    "vite": "npm:rolldown-vite@7.1.14"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.1.14"
-  },
-  "build": {
-    "appId": "com.arthiq.app",
-    "productName": "Arthiq",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "arthiq.db",
-        "to": "arthiq.db",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
-    "win": {
-      "target": "nsis"
-    },
-    "mac": {
-      "target": "dmg"
-    },
-    "linux": {
-      "target": "AppImage"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
   }
 }

@@ -1,5 +1,5 @@
-// Database service for Electron app
-// This file provides a clean interface between React and Electron's database operations
+// Database service for web app
+// This file provides a clean interface between React and the Express backend
 
 export interface Expense {
   id: string;
@@ -36,17 +36,12 @@ export interface DatabaseAPI {
   // Utility operations
   clearAllData: () => Promise<{ success: boolean; error?: string }>;
   importData: (data: { expenses?: Expense[]; budgets?: Record<string, number> }) => Promise<{ success: boolean; error?: string; message?: string }>;
-  
-  // Platform detection
-  isElectron: boolean;
 }
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
 // Server API implementation for web version (Connects to Express Backend)
 const serverAPI: DatabaseAPI = {
-  isElectron: false,
-  
   async getExpenses(): Promise<Expense[]> {
     try {
       const response = await fetch(`${API_BASE_URL}/expenses`);
@@ -203,65 +198,11 @@ const serverAPI: DatabaseAPI = {
   }
 };
 
-// Electron API implementation
-const electronAPI: DatabaseAPI = {
-  isElectron: true,
-  
-  async getExpenses(): Promise<Expense[]> {
-    return (window as any).electronAPI.getExpenses();
-  },
-  
-  async addExpense(expense: Expense): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.addExpense(expense);
-  },
-  
-  async updateExpense(expense: Expense): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.updateExpense(expense);
-  },
-  
-  async deleteExpense(id: string): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.deleteExpense(id);
-  },
-  
-  async getBudgets(): Promise<Budget[]> {
-    return (window as any).electronAPI.getBudgets();
-  },
-  
-  async setBudget(budget: Budget): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.setBudget(budget);
-  },
-  
-  async deleteBudget(category: string): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.deleteBudget(category);
-  },
-  
-  async getSetting(key: string): Promise<string | null> {
-    return (window as any).electronAPI.getSetting(key);
-  },
-  
-  async setSetting(key: string, value: string): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.setSetting(key, value);
-  },
-  
-  async clearAllData(): Promise<{ success: boolean; error?: string }> {
-    return (window as any).electronAPI.clearAllData();
-  },
-  
-  async importData(data: { expenses?: Expense[]; budgets?: Record<string, number> }): Promise<{ success: boolean; error?: string; message?: string }> {
-    return (window as any).electronAPI.importData(data);
-  }
-};
-
-// Export the appropriate API based on environment
-export const databaseAPI: DatabaseAPI = (typeof window !== 'undefined' && (window as any).electronAPI) 
-  ? electronAPI 
-  : serverAPI;
+// Export the server API
+export const databaseAPI: DatabaseAPI = serverAPI;
 
 // Helper functions for data migration
 export const migrateFromLocalStorage = async (): Promise<void> => {
-  // Migration logic mostly relevant for Electron or moving TO server
-  // ... (keeping existing logic for now, though it might need adjustment if migrating web localStorage to server)
-  
   try {
     // Get existing localStorage data
     const expensesData = localStorage.getItem('expenses');
@@ -271,7 +212,7 @@ export const migrateFromLocalStorage = async (): Promise<void> => {
       const expenses = expensesData ? JSON.parse(expensesData) : [];
       const budgets = budgetsData ? JSON.parse(budgetsData) : {};
       
-      // Import to database (Server or Electron)
+      // Import to database
       const result = await databaseAPI.importData({ expenses, budgets });
       
       if (result.success) {
@@ -286,9 +227,4 @@ export const migrateFromLocalStorage = async (): Promise<void> => {
   } catch (error) {
     console.error('Error during migration:', error);
   }
-};
-
-// Utility function to detect if running in Electron
-export const isElectronApp = (): boolean => {
-  return typeof window !== 'undefined' && !!(window as any).electronAPI;
 };
