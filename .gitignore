@@ -1,3 +1,11 @@
+# Build outputs
+dist-electron/
+*.asar
+*.exe
+
+# Database files
+*.db
+
 # Logs
 logs
 *.log
