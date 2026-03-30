@@ -507,6 +507,51 @@ export function ExpenseTracker() {
         {/* Header */}
         <Card className="overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 via-transparent to-teal-50/40 pointer-events-none" />
+          {/* Floating money notes animation */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* INR notes */}
+            <div className="absolute" style={{ animation: 'float-money-1 14s linear infinite', left: '5%', top: '60%' }}>
+              <div className="w-16 h-8 rounded-sm bg-gradient-to-r from-emerald-400/20 to-emerald-600/20 border border-emerald-400/30 flex items-center justify-center rotate-12 shadow-sm">
+                <span className="text-emerald-500/40 text-xs font-bold">₹500</span>
+              </div>
+            </div>
+            <div className="absolute" style={{ animation: 'float-money-2 18s linear infinite 3s', left: '60%', top: '80%' }}>
+              <div className="w-14 h-7 rounded-sm bg-gradient-to-r from-orange-300/20 to-orange-500/20 border border-orange-400/30 flex items-center justify-center -rotate-6 shadow-sm">
+                <span className="text-orange-500/40 text-xs font-bold">₹200</span>
+              </div>
+            </div>
+            <div className="absolute" style={{ animation: 'float-money-3 16s linear infinite 7s', left: '35%', top: '50%' }}>
+              <div className="w-12 h-6 rounded-sm bg-gradient-to-r from-violet-400/20 to-violet-600/20 border border-violet-400/30 flex items-center justify-center rotate-20 shadow-sm">
+                <span className="text-violet-500/40 text-[10px] font-bold">₹100</span>
+              </div>
+            </div>
+            <div className="absolute" style={{ animation: 'float-money-1 20s linear infinite 5s', left: '85%', top: '40%' }}>
+              <div className="w-14 h-7 rounded-sm bg-gradient-to-r from-teal-400/20 to-teal-600/20 border border-teal-400/30 flex items-center justify-center -rotate-12 shadow-sm">
+                <span className="text-teal-500/40 text-xs font-bold">₹2000</span>
+              </div>
+            </div>
+            {/* EUR notes */}
+            <div className="absolute" style={{ animation: 'float-money-2 15s linear infinite 1s', left: '75%', top: '70%' }}>
+              <div className="w-16 h-8 rounded-sm bg-gradient-to-r from-blue-400/20 to-blue-600/20 border border-blue-400/30 flex items-center justify-center rotate-6 shadow-sm">
+                <span className="text-blue-500/40 text-xs font-bold">€50</span>
+              </div>
+            </div>
+            <div className="absolute" style={{ animation: 'float-money-3 17s linear infinite 4s', left: '20%', top: '30%' }}>
+              <div className="w-14 h-7 rounded-sm bg-gradient-to-r from-amber-400/20 to-amber-600/20 border border-amber-400/30 flex items-center justify-center -rotate-15 shadow-sm">
+                <span className="text-amber-500/40 text-xs font-bold">€200</span>
+              </div>
+            </div>
+            <div className="absolute" style={{ animation: 'float-money-1 19s linear infinite 6s', left: '50%', top: '20%' }}>
+              <div className="w-12 h-6 rounded-sm bg-gradient-to-r from-green-400/20 to-green-600/20 border border-green-400/30 flex items-center justify-center rotate-3 shadow-sm">
+                <span className="text-green-500/40 text-[10px] font-bold">€100</span>
+              </div>
+            </div>
+            <div className="absolute" style={{ animation: 'float-money-2 16s linear infinite 8s', left: '45%', top: '75%' }}>
+              <div className="w-14 h-7 rounded-sm bg-gradient-to-r from-rose-400/20 to-rose-600/20 border border-rose-400/30 flex items-center justify-center -rotate-8 shadow-sm">
+                <span className="text-rose-500/40 text-xs font-bold">€500</span>
+              </div>
+            </div>
+          </div>
           <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
           <CardContent className="p-5 relative">
             <div className="flex flex-col lg:flex-row justify-between gap-5">
