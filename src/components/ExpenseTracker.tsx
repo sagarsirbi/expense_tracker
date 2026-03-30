@@ -295,6 +295,28 @@ export function ExpenseTracker() {
     }
   };
 
+  const defaultCategories = ['Food', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Healthcare', 'Education', 'Others'];
+
+  const deleteCategory = async (category: string) => {
+    const hasExpenses = expenses.some(exp => exp.category === category);
+    if (hasExpenses) {
+      addToast({ type: 'warning', title: 'Cannot Delete', message: `"${category}" has existing expenses.`, suggestion: 'Delete or reassign those expenses first.' });
+      return;
+    }
+    const updated = categories.filter(c => c !== category);
+    setCategories(updated);
+    // Remove budget if set
+    const newBudgets = { ...budgets };
+    const newBudgetCurrencies = { ...budgetCurrencies };
+    delete newBudgets[category];
+    delete newBudgetCurrencies[category];
+    setBudgets(newBudgets);
+    setBudgetCurrencies(newBudgetCurrencies);
+    await databaseAPI.deleteBudget(category);
+    const customOnly = updated.filter(c => !defaultCategories.includes(c));
+    await databaseAPI.setSetting('customCategories', JSON.stringify(customOnly));
+  };
+
   const deleteExpense = async (id: string) => {
     try {
       const result = await databaseAPI.deleteExpense(id);
@@ -884,15 +906,30 @@ export function ExpenseTracker() {
                 {!showAddCategory ? (
                   <button onClick={() => setShowAddCategory(true)}
                     className="flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-800 font-medium">
-                    <FolderPlus className="h-4 w-4" /> Add Custom Category
+                    <FolderPlus className="h-4 w-4" /> Manage Categories
                   </button>
                 ) : (
-                  <div className="flex gap-2">
-                    <Input placeholder="New category name" value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && addCategory()} className="flex-1" />
-                    <Button size="sm" onClick={addCategory}>Add</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setShowAddCategory(false); setNewCategory(''); }}>Cancel</Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input placeholder="New category name" value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addCategory()} className="flex-1" />
+                      <Button size="sm" onClick={addCategory}>Add</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setShowAddCategory(false); setNewCategory(''); }}>Cancel</Button>
+                    </div>
+                    {categories.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {categories.map(cat => (
+                          <Badge key={cat} variant="secondary" className="gap-1 pr-1 text-xs">
+                            {cat}
+                            <button onClick={() => deleteCategory(cat)}
+                              className="ml-0.5 rounded-full hover:bg-red-100 hover:text-red-600 p-0.5 transition-colors">
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -969,7 +1006,13 @@ export function ExpenseTracker() {
               return (
                 <div key={category} className="p-3 bg-muted/50 rounded-lg border-l-4 border-l-emerald-500">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">{category}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{category}</span>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-red-500"
+                        onClick={() => deleteCategory(category)} title="Delete category">
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
                     {budgetStatus && (
                       <span className={cn("text-xs font-medium",
                         budgetStatus.status === 'safe' ? 'text-emerald-600' : budgetStatus.status === 'warning' ? 'text-amber-600' : 'text-red-600 font-bold'
