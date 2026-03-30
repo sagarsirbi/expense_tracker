@@ -2,9 +2,16 @@
 dist-electron/
 *.asar
 *.exe
+.temp_asar_extract/
 
 # Database files
 *.db
+*.db-shm
+*.db-wal
+
+# Backup files
+*.backup
+*.backup.*
 
 # Logs
 logs
