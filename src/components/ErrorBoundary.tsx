@@ -26,13 +26,19 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { componentName = 'Unknown Component' } = this.props;
-    
+
+    // Use a safe subset of props to avoid leaking non-serializable values
+    const safeProps = {
+      componentName,
+      hasFallback: Boolean(this.props.fallback),
+    };
+
     // Log the error with detailed context
     logger.logComponentError(componentName, error, {
       errorInfo: {
         componentStack: errorInfo.componentStack,
         errorBoundary: true,
-        props: this.props,
+        props: safeProps,
         timestamp: new Date().toISOString()
       }
     });

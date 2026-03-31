@@ -35,7 +35,7 @@ class FrontendLogger {
       enableConsole: true,
       enableRemote: true,
       logLevel: 'info',
-      apiEndpoint: 'http://localhost:3001/api/logs',
+      apiEndpoint: '/api/logs',
       maxLocalLogs: 100,
       enablePerformanceLogging: true,
       ...config
@@ -79,8 +79,7 @@ class FrontendLogger {
       correlationId: this.correlationId,
       sessionId: this.sessionId,
       url: window.location.href,
-      userAgent: navigator.userAgent,
-      ...context
+      userAgent: navigator.userAgent
     };
   }
 
@@ -140,7 +139,7 @@ class FrontendLogger {
     }
   }
 
-  private log(level: LogLevel, message: string, context: Record<string, any> = {}): void {
+  protected log(level: LogLevel, message: string, context: Record<string, any> = {}): void {
     if (!this.shouldLog(level)) return;
 
     const entry = this.createLogEntry(level, message, context);
@@ -330,18 +329,18 @@ class FrontendLogger {
     };
   }
 
-  // Create child logger with additional context
+  // Create child logger with additional context — shares this instance's state,
+  // does NOT re-run constructor side effects (no new event listeners or session log).
   child(context: Record<string, any> = {}): FrontendLogger {
-    const childLogger = new FrontendLogger(this.config);
-    childLogger.correlationId = this.correlationId;
-    childLogger.sessionId = this.sessionId;
-    
-    // Override log method to include additional context
-    const originalLog = childLogger.log.bind(childLogger);
+    const parent = this;
+    // Create a minimal proxy object that delegates to the parent instance
+    const childLogger = Object.create(parent) as FrontendLogger;
+
+    // Override the protected log method to merge additional context
     childLogger.log = (level: LogLevel, message: string, additionalContext: Record<string, any> = {}) => {
-      originalLog(level, message, { ...context, ...additionalContext });
+      parent.log(level, message, { ...context, ...additionalContext });
     };
-    
+
     return childLogger;
   }
 }

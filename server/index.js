@@ -66,9 +66,21 @@ db.exec(`
     category TEXT NOT NULL,
     amount REAL NOT NULL,
     month TEXT NOT NULL,
-    userId TEXT DEFAULT 'default'
+    userId TEXT DEFAULT 'default',
+    currency TEXT DEFAULT 'INR'
   )
 `);
+
+// Migration: add currency column to budgets if missing (for existing databases)
+try {
+  const budgetColumns = db.prepare("PRAGMA table_info(budgets)").all();
+  if (!budgetColumns.find(c => c.name === 'currency')) {
+    db.exec(`ALTER TABLE budgets ADD COLUMN currency TEXT DEFAULT 'INR'`);
+    logger.info('Migrated budgets table: added currency column');
+  }
+} catch (e) {
+  logger.warn('Budgets currency column migration check:', e.message);
+}
 
 // Swagger configuration
 const swaggerOptions = {
@@ -559,8 +571,8 @@ app.post('/api/budgets', (req, res) => {
     // Default month to current month if not provided
     const budgetMonth = month || new Date().toISOString().slice(0, 7);
 
-    const stmt = db.prepare('INSERT OR REPLACE INTO budgets (id, category, amount, month, userId) VALUES (?, ?, ?, ?, ?)');
-    stmt.run(id, category, amount, budgetMonth, 'default');
+    const stmt = db.prepare('INSERT OR REPLACE INTO budgets (id, category, amount, month, userId, currency) VALUES (?, ?, ?, ?, ?, ?)');
+    stmt.run(id, category, amount, budgetMonth, 'default', currency || 'INR');
 
     res.status(201).json({ id, category, amount, month: budgetMonth, currency: currency || 'INR', userId: 'default' });
   } catch (error) {
@@ -660,18 +672,18 @@ app.delete('/api/budgets/category/:category', (req, res) => {
 // Clear all data endpoint
 app.delete('/api/clear-all', (req, res) => {
   try {
-    db.exec('DELETE FROM expenses WHERE userId = ?', ['default']);
-    db.exec('DELETE FROM budgets WHERE userId = ?', ['default']);
+    const deleteExpenses = db.prepare('DELETE FROM expenses WHERE userId = ?');
+    const deleteBudgets = db.prepare('DELETE FROM budgets WHERE userId = ?');
+
+    const clearUserData = db.transaction((userId) => {
+      deleteExpenses.run(userId);
+      deleteBudgets.run(userId);
+    });
+
+    clearUserData('default');
     res.json({ success: true, message: 'All data cleared' });
-  } catch (error) {
-    // Fallback: use prepared statements
-    try {
-      db.prepare('DELETE FROM expenses WHERE userId = ?').run('default');
-      db.prepare('DELETE FROM budgets WHERE userId = ?').run('default');
-      res.json({ success: true, message: 'All data cleared' });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -938,8 +950,11 @@ app.post('/api/logs', (req, res) => {
   try {
     const logData = req.body;
     
-    // Log the frontend message to our backend logger
-    const level = logData.level || 'info';
+    // Validate level against allowlist to prevent DoS/injection
+    const VALID_LEVELS = ['error', 'warn', 'info', 'debug'];
+    const rawLevel = typeof logData.level === 'string' ? logData.level.toLowerCase() : '';
+    const level = VALID_LEVELS.includes(rawLevel) ? rawLevel : 'info';
+
     const message = `Frontend: ${logData.message}`;
     const context = {
       source: 'frontend',

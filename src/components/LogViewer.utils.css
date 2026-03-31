@@ -1,44 +1,41 @@
 /* LogViewer Utility Classes */
 
 /* Additional responsive utilities for log viewer */
-.logs-viewer-utilities {
-  /* Text utilities */
-  .text-truncate {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .text-wrap {
-    word-wrap: break-word;
-    word-break: break-word;
-  }
-  
-  /* Spacing utilities */
-  .spacing-xs { margin: 0.25rem; }
-  .spacing-sm { margin: 0.5rem; }
-  .spacing-md { margin: 0.75rem; }
-  .spacing-lg { margin: 1rem; }
-  .spacing-xl { margin: 1.5rem; }
-  
-  /* Flex utilities */
-  .flex-center {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .flex-between {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .flex-start {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-  }
+.logs-viewer-utilities .text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logs-viewer-utilities .text-wrap {
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Spacing utilities */
+.logs-viewer-utilities .spacing-xs { margin: 0.25rem; }
+.logs-viewer-utilities .spacing-sm { margin: 0.5rem; }
+.logs-viewer-utilities .spacing-md { margin: 0.75rem; }
+.logs-viewer-utilities .spacing-lg { margin: 1rem; }
+.logs-viewer-utilities .spacing-xl { margin: 1.5rem; }
+
+/* Flex utilities */
+.logs-viewer-utilities .flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logs-viewer-utilities .flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logs-viewer-utilities .flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 /* Animation improvements */

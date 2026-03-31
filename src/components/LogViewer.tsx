@@ -30,7 +30,15 @@ export function LogViewer() {
     try {
       componentLogger.info('Loading logs from API');
       
-      const response = await fetch('http://localhost:3001/api/logs?limit=100');
+      const response = await fetch('/api/logs?limit=100');
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(
+          `Failed to load logs: ${response.status} ${response.statusText}${
+            errorText ? ` - ${errorText}` : ''
+          }`
+        );
+      }
       const data = await response.json();
       
       if (data.logs) {
