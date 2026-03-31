@@ -1,0 +1,530 @@
+/* LogViewer Component Styles */
+
+.logs-viewer {
+  --log-bg: #fafafa;
+  --log-border: #e5e7eb;
+  --log-text: #374151;
+  --log-text-secondary: #6b7280;
+  --log-text-tertiary: #9ca3af;
+  
+  /* Log Level Colors */
+  --log-error-bg: #fef2f2;
+  --log-error-border: #fecaca;
+  --log-error-text: #991b1b;
+  --log-error-icon: #dc2626;
+  
+  --log-warn-bg: #fffbeb;
+  --log-warn-border: #fed7aa;
+  --log-warn-text: #92400e;
+  --log-warn-icon: #d97706;
+  
+  --log-info-bg: #eff6ff;
+  --log-info-border: #bfdbfe;
+  --log-info-text: #1e40af;
+  --log-info-icon: #3b82f6;
+  
+  --log-debug-bg: #f9fafb;
+  --log-debug-border: #d1d5db;
+  --log-debug-text: #374151;
+  --log-debug-icon: #6b7280;
+  
+  /* Component Variables */
+  --log-radius: 8px;
+  --log-radius-lg: 12px;
+  --log-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --log-shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Main Container */
+.logs-viewer {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  font-family: var(--font-primary, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+/* Header Section */
+.logs-viewer h2 {
+  color: var(--log-text);
+  font-weight: 700;
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  margin: 0 0 1.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Controls Section */
+.logs-viewer .controls-section {
+  background: white;
+  border-radius: var(--log-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--log-shadow);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--log-border);
+}
+
+/* Button Styles */
+.logs-viewer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: var(--log-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.logs-viewer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary Button (Refresh) */
+.logs-viewer button.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.logs-viewer button.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Success Button (Download) */
+.logs-viewer button.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.logs-viewer button.btn-success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Form Controls */
+.logs-viewer select,
+.logs-viewer input[type="text"] {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--log-border);
+  border-radius: var(--log-radius);
+  font-size: 0.875rem;
+  background: white;
+  transition: all 0.2s ease-in-out;
+  color: var(--log-text);
+}
+
+.logs-viewer select:focus,
+.logs-viewer input[type="text"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.logs-viewer input[type="text"] {
+  min-width: 16rem;
+}
+
+/* Filter Controls */
+.logs-viewer .filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Stats */
+.logs-viewer .log-stats {
+  font-size: 0.875rem;
+  color: var(--log-text-secondary);
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--log-border);
+  margin-top: 1rem;
+}
+
+/* Log Container */
+.logs-viewer .log-container {
+  background: white;
+  border-radius: var(--log-radius-lg);
+  box-shadow: var(--log-shadow);
+  border: 1px solid var(--log-border);
+  max-height: 70vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Custom Scrollbar */
+.logs-viewer .log-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.logs-viewer .log-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.logs-viewer .log-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.logs-viewer .log-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Empty State */
+.logs-viewer .empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--log-text-secondary);
+  font-size: 1rem;
+}
+
+.logs-viewer .empty-state.loading {
+  position: relative;
+}
+
+.logs-viewer .empty-state.loading::after {
+  content: '';
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 0.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Log Entry Styles */
+.logs-viewer .log-entry {
+  border-bottom: 1px solid var(--log-border);
+  padding: 1rem 1.5rem;
+  transition: background-color 0.15s ease-in-out;
+  position: relative;
+}
+
+.logs-viewer .log-entry:last-child {
+  border-bottom: none;
+  border-bottom-left-radius: var(--log-radius-lg);
+  border-bottom-right-radius: var(--log-radius-lg);
+}
+
+.logs-viewer .log-entry:first-child {
+  border-top-left-radius: var(--log-radius-lg);
+  border-top-right-radius: var(--log-radius-lg);
+}
+
+.logs-viewer .log-entry:hover {
+  background-color: #f8fafc;
+}
+
+/* Log Level Specific Styles */
+.logs-viewer .log-entry.log-error {
+  background: var(--log-error-bg);
+  border-left: 4px solid var(--log-error-icon);
+}
+
+.logs-viewer .log-entry.log-warn {
+  background: var(--log-warn-bg);
+  border-left: 4px solid var(--log-warn-icon);
+}
+
+.logs-viewer .log-entry.log-info {
+  background: var(--log-info-bg);
+  border-left: 4px solid var(--log-info-icon);
+}
+
+.logs-viewer .log-entry.log-debug {
+  background: var(--log-debug-bg);
+  border-left: 4px solid var(--log-debug-icon);
+}
+
+/* Log Entry Content */
+.logs-viewer .log-entry-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.logs-viewer .log-icon {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.logs-viewer .log-details {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Log Header */
+.logs-viewer .log-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.logs-viewer .log-timestamp {
+  font-family: var(--font-mono, 'Monaco', 'Menlo', monospace);
+  font-size: 0.75rem;
+  color: var(--log-text-tertiary);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--log-border);
+}
+
+.logs-viewer .log-level-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.logs-viewer .log-level-badge.error {
+  background: var(--log-error-bg);
+  color: var(--log-error-text);
+  border-color: var(--log-error-border);
+}
+
+.logs-viewer .log-level-badge.warn {
+  background: var(--log-warn-bg);
+  color: var(--log-warn-text);
+  border-color: var(--log-warn-border);
+}
+
+.logs-viewer .log-level-badge.info {
+  background: var(--log-info-bg);
+  color: var(--log-info-text);
+  border-color: var(--log-info-border);
+}
+
+.logs-viewer .log-level-badge.debug {
+  background: var(--log-debug-bg);
+  color: var(--log-debug-text);
+  border-color: var(--log-debug-border);
+}
+
+.logs-viewer .log-correlation-id {
+  font-family: var(--font-mono, 'Monaco', 'Menlo', monospace);
+  font-size: 0.75rem;
+  color: var(--log-text-tertiary);
+  background: rgba(255, 255, 255, 0.6);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--log-border);
+}
+
+/* Log Message */
+.logs-viewer .log-message {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--log-text);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Log Details Expandable */
+.logs-viewer .log-details-expandable {
+  margin-top: 0.75rem;
+}
+
+.logs-viewer .log-details-summary {
+  font-size: 0.75rem;
+  color: var(--log-text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--log-border);
+  border-radius: 4px;
+  transition: all 0.2s ease-in-out;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.logs-viewer .log-details-summary:hover {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: #94a3b8;
+}
+
+.logs-viewer .log-details-content {
+  margin-top: 0.5rem;
+  font-family: var(--font-mono, 'Monaco', 'Menlo', monospace);
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--log-border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  color: var(--log-text);
+  line-height: 1.4;
+}
+
+.logs-viewer .log-details-content::-webkit-scrollbar {
+  height: 6px;
+}
+
+.logs-viewer .log-details-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.logs-viewer .log-details-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .logs-viewer {
+    padding: 1rem;
+  }
+  
+  .logs-viewer .filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .logs-viewer input[type="text"] {
+    min-width: 100%;
+  }
+  
+  .logs-viewer .log-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.375rem;
+  }
+  
+  .logs-viewer .log-entry {
+    padding: 0.75rem 1rem;
+  }
+  
+  .logs-viewer .controls-section {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .logs-viewer h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  
+  .logs-viewer .log-entry-content {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .logs-viewer .log-icon {
+    align-self: flex-start;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .logs-viewer {
+    background: white;
+    box-shadow: none;
+  }
+  
+  .logs-viewer .controls-section {
+    display: none;
+  }
+  
+  .logs-viewer .log-container {
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  .logs-viewer .log-entry {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .logs-viewer {
+    --log-bg: #1f2937;
+    --log-border: #374151;
+    --log-text: #f9fafb;
+    --log-text-secondary: #d1d5db;
+    --log-text-tertiary: #9ca3af;
+    
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  }
+  
+  .logs-viewer .controls-section,
+  .logs-viewer .log-container {
+    background: #1f2937;
+    border-color: var(--log-border);
+  }
+  
+  .logs-viewer select,
+  .logs-viewer input[type="text"] {
+    background: #374151;
+    border-color: #4b5563;
+    color: var(--log-text);
+  }
+  
+  .logs-viewer .log-entry:hover {
+    background-color: #374151;
+  }
+  
+  .logs-viewer .log-timestamp,
+  .logs-viewer .log-correlation-id {
+    background: rgba(55, 65, 81, 0.8);
+    border-color: #4b5563;
+  }
+  
+  .logs-viewer .log-details-summary {
+    background: rgba(55, 65, 81, 0.5);
+    border-color: #4b5563;
+  }
+  
+  .logs-viewer .log-details-content {
+    background: rgba(55, 65, 81, 0.8);
+    border-color: #4b5563;
+  }
+}
+
+/* Loading Animation for Refresh Button */
+.logs-viewer .spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Focus Styles for Accessibility */
+.logs-viewer button:focus-visible,
+.logs-viewer select:focus-visible,
+.logs-viewer input:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Smooth Scrolling */
+.logs-viewer .log-container {
+  scroll-behavior: smooth;
+}

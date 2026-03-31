@@ -1,35 +1,56 @@
-import React from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AuthContainer } from './components/auth/AuthContainer';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ExpenseTracker } from './components/ExpenseTracker';
-import './App.css';
-
-const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <AuthContainer />;
-  }
-
-  return <ExpenseTracker />;
-};
-
+import { Database } from './components/Database';
+import { AnnualView } from './components/AnnualView';
+import { LogViewer } from './components/LogViewer';
+import ErrorBoundary from './components/ErrorBoundary';
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <Router>
+      <div className="min-h-screen bg-background font-sans antialiased">
+        <Routes>
+          {/* Main expense tracker route */}
+          <Route path="/" element={
+            <ErrorBoundary componentName="ExpenseTracker">
+              <ExpenseTracker />
+            </ErrorBoundary>
+          } />
+          
+          {/* Database routes with month parameter */}
+          <Route path="/:monthName/database" element={
+            <ErrorBoundary componentName="Database">
+              <Database />
+            </ErrorBoundary>
+          } />
+          <Route path="/database" element={
+            <ErrorBoundary componentName="Database">
+              <Database />
+            </ErrorBoundary>
+          } />
+          
+          {/* Logs viewer route */}
+          <Route path="/logs" element={
+            <ErrorBoundary componentName="LogViewer">
+              <LogViewer />
+            </ErrorBoundary>
+          } />
+          
+          {/* Annual view route */}
+          <Route path="/annual" element={
+            <ErrorBoundary componentName="AnnualView">
+              <AnnualView />
+            </ErrorBoundary>
+          } />
+          
+          {/* Fallback route */}
+          <Route path="*" element={
+            <ErrorBoundary componentName="ExpenseTracker">
+              <ExpenseTracker />
+            </ErrorBoundary>
+          } />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

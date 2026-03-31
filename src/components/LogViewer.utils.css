@@ -1,0 +1,162 @@
+/* LogViewer Utility Classes */
+
+/* Additional responsive utilities for log viewer */
+.logs-viewer-utilities .text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logs-viewer-utilities .text-wrap {
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Spacing utilities */
+.logs-viewer-utilities .spacing-xs { margin: 0.25rem; }
+.logs-viewer-utilities .spacing-sm { margin: 0.5rem; }
+.logs-viewer-utilities .spacing-md { margin: 0.75rem; }
+.logs-viewer-utilities .spacing-lg { margin: 1rem; }
+.logs-viewer-utilities .spacing-xl { margin: 1.5rem; }
+
+/* Flex utilities */
+.logs-viewer-utilities .flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logs-viewer-utilities .flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logs-viewer-utilities .flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* Animation improvements */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.logs-viewer .log-entry {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.logs-viewer .log-entry:nth-child(odd) {
+  animation-delay: 0.05s;
+}
+
+.logs-viewer .log-entry:nth-child(even) {
+  animation-delay: 0.1s;
+}
+
+/* Enhanced hover effects */
+.logs-viewer .log-entry:hover {
+  background-color: #f8fafc;
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced loading state */
+.logs-viewer .loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.logs-viewer .loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Enhanced focus indicators */
+.logs-viewer *:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Status indicators */
+.logs-viewer .status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.logs-viewer .status-indicator.online {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.logs-viewer .status-indicator.offline {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.logs-viewer .status-indicator.pending {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fed7aa;
+}
+
+/* Enhanced tooltip styles */
+.logs-viewer .tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.logs-viewer .tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.logs-viewer .tooltip:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 94%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #1f2937;
+  z-index: 10;
+}
