@@ -9,40 +9,11 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir);
 }
 
-// Custom format for log messages
+// JSON format for file transports (must produce valid JSON for /api/logs parsing)
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
-  winston.format.json(),
-  winston.format.printf(({ timestamp, level, message, ...meta }) => {
-    let logMessage = `${timestamp} [${level.toUpperCase()}]`;
-    
-    // Add correlation ID if available
-    if (meta.correlationId) {
-      logMessage += ` [${meta.correlationId}]`;
-    }
-    
-    // Add user context if available
-    if (meta.userId || meta.userAgent) {
-      logMessage += ` [User: ${meta.userId || 'anonymous'}]`;
-    }
-    
-    logMessage += `: ${message}`;
-    
-    // Add metadata
-    if (Object.keys(meta).length > 0) {
-      const cleanMeta = { ...meta };
-      delete cleanMeta.correlationId;
-      delete cleanMeta.userId;
-      delete cleanMeta.userAgent;
-      
-      if (Object.keys(cleanMeta).length > 0) {
-        logMessage += ` | ${JSON.stringify(cleanMeta)}`;
-      }
-    }
-    
-    return logMessage;
-  })
+  winston.format.json()
 );
 
 // Daily rotate file transport for all logs

@@ -38,7 +38,7 @@ export interface DatabaseAPI {
   importData: (data: { expenses?: Expense[]; budgets?: Record<string, number> }) => Promise<{ success: boolean; error?: string; message?: string }>;
 }
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api';
 
 // Server API implementation for web version (Connects to Express Backend)
 const serverAPI: DatabaseAPI = {
